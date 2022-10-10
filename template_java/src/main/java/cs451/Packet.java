@@ -5,6 +5,7 @@ import java.util.ArrayList;
 public class Packet {
 
     private int remaining_size;
+    private int remaining_msgs;
     private ArrayList<Byte> payload;
 
     /**
@@ -15,6 +16,7 @@ public class Packet {
         this.payload = new ArrayList<>();
         payload.add(sender_ID);
         this.remaining_size = 65506; // MAX UDP Payload size - space for the sender ID
+        this.remaining_msgs = 8;    // MAX number of messages allowed in one packet
     }
 
     /**
@@ -23,6 +25,7 @@ public class Packet {
      */
     public Packet(byte[] payload){
         this.remaining_size = 65506 - payload.length; // MAX UDP Payload size - space for the sender ID
+        this.remaining_msgs = 8;
     }
 
     /**
@@ -35,6 +38,11 @@ public class Packet {
         if(msg.getPayload().length + 8 > remaining_size){
             return false;
         }
+
+        if(this.remaining_msgs == 0){
+            return false;
+        }
+
         byte[] id_bytes = fromIntToBytes(msg.getID());
         byte[] payload = msg.getPayload();
         byte[] len_msg = fromIntToBytes(payload.length + 8);
@@ -55,6 +63,7 @@ public class Packet {
         }
 
         this.remaining_size -= (payload.length + 8);
+        this.remaining_msgs -= 1;
 
         return true;
     }
