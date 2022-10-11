@@ -1,8 +1,9 @@
-package cs451;
+package cs451.packet;
 
+import cs451.Message;
 import java.util.ArrayList;
 
-public class Packet {
+public class MessagePacket extends Packet {
 
     private int remaining_size;
     private int remaining_msgs;
@@ -12,7 +13,9 @@ public class Packet {
      * constructor to be used when creating a packet to be sent
      * @param sender_ID the id of the sender of the packet
      */
-    public Packet(byte sender_ID){
+    public MessagePacket( byte sender_ID){
+        super(sender_ID);
+        this.type = PacketType.MSG;
         this.payload = new ArrayList<>();
         payload.add(sender_ID);
         this.remaining_size = 65506; // MAX UDP Payload size - space for the sender ID
@@ -23,9 +26,12 @@ public class Packet {
      * constructor to be used when receiving a packet
      * @param payload
      */
-    public Packet(byte[] payload){
+    public MessagePacket(byte[] payload){
+        super();
         this.remaining_size = 65506 - payload.length; // MAX UDP Payload size - space for the sender ID
         this.remaining_msgs = 8;
+
+        // I need to parse the message to deliver it (?)
     }
 
     /**
@@ -80,32 +86,5 @@ public class Packet {
 
         return payload;
     }
-
-
-
-    private int fromBytesToInt(byte[] payload){
-        int value = 0;
-        int shift = 0;
-
-        for(int i=0; i<payload.length; i++){
-            value += ((int)(payload[i])) << shift;
-            shift += 8;
-        }
-
-        return value;
-    }
-
-    private byte[] fromIntToBytes(int value){
-
-        byte[] payload = new byte[4];
-
-        payload[0] = (byte) (value & 0xFF);
-        payload[1] = (byte) ((value >>> 8) & 0xFF);
-        payload[2] = (byte) ((value >>> 16) & 0xFF);
-        payload[3] = (byte) ((value >>> 24) & 0xFF);
-
-        return payload;
-    }
-
 
 }

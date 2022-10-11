@@ -1,4 +1,6 @@
-package cs451;
+package cs451.link;
+
+import cs451.Host;
 
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -23,6 +25,10 @@ public class StubbornLink {
         } catch (SocketException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void send(){
+
     }
 
 

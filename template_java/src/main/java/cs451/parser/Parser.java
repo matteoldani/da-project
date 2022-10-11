@@ -1,4 +1,11 @@
-package cs451;
+package cs451.parser;
+
+import cs451.Constants;
+import cs451.Host;
+import cs451.parser.ConfigParser;
+import cs451.parser.HostsParser;
+import cs451.parser.IdParser;
+import cs451.parser.OutputParser;
 
 import java.util.List;
 
