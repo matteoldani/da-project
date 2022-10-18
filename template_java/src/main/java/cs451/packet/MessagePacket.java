@@ -1,25 +1,28 @@
 package cs451.packet;
 
 import cs451.Message;
+
+import java.net.InetAddress;
 import java.util.ArrayList;
 
 public class MessagePacket extends Packet {
 
     private int remaining_size;
-    private int remaining_msgs;
+    private int msgs;
     private ArrayList<Byte> payload;
 
     /**
      * constructor to be used when creating a packet to be sent
      * @param sender_ID the id of the sender of the packet
      */
-    public MessagePacket( byte sender_ID){
-        super(sender_ID);
-        this.type = PacketType.MSG;
+    public MessagePacket(byte sender_ID, int packet_ID, InetAddress remote_ip, int remote_port){
+        super(sender_ID, packet_ID, remote_ip, remote_port, PacketType.MSG);
         this.payload = new ArrayList<>();
         payload.add(sender_ID);
-        this.remaining_size = 65506; // MAX UDP Payload size - space for the sender ID
-        this.remaining_msgs = 8;    // MAX number of messages allowed in one packet
+        // MAX UDP Payload size - space for the sender ID
+        this.remaining_size = 65506;
+        // MAX number of messages allowed in one packet
+        this.msgs = 0;
     }
 
     /**
@@ -28,8 +31,9 @@ public class MessagePacket extends Packet {
      */
     public MessagePacket(byte[] payload){
         super();
-        this.remaining_size = 65506 - payload.length; // MAX UDP Payload size - space for the sender ID
-        this.remaining_msgs = 8;
+        // MAX UDP Payload size - space for the sender ID
+        this.remaining_size = 65506 - payload.length;
+        this.msgs = 0;
 
         // I need to parse the message to deliver it (?)
     }
@@ -45,7 +49,7 @@ public class MessagePacket extends Packet {
             return false;
         }
 
-        if(this.remaining_msgs == 0){
+        if(this.msgs == 8){
             return false;
         }
 
@@ -69,7 +73,7 @@ public class MessagePacket extends Packet {
         }
 
         this.remaining_size -= (payload.length + 8);
-        this.remaining_msgs -= 1;
+        this.msgs += 1;
 
         return true;
     }
@@ -87,4 +91,7 @@ public class MessagePacket extends Packet {
         return payload;
     }
 
+    public int getMsgs() {
+        return msgs;
+    }
 }

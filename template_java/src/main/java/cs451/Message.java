@@ -5,7 +5,7 @@ public class Message {
     private int ID;
     private byte[] payload;
 
-    public Message(int ID, int len, byte[] payload){
+    public Message(int ID, byte[] payload){
         this.ID = ID;
         this.payload = payload;
     }
@@ -17,4 +17,6 @@ public class Message {
     public byte[] getPayload() {
         return payload;
     }
+
+
 }
