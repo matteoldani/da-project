@@ -19,7 +19,8 @@ public class MessagePacket extends Packet {
      * constructor to be used when creating a packet to be sent
      * @param sender_ID the id of the sender of the packet
      */
-    public MessagePacket(byte sender_ID, int packet_ID, InetAddress remote_ip, int remote_port){
+    public MessagePacket(byte sender_ID, int packet_ID, InetAddress remote_ip,
+                         int remote_port){
         super(sender_ID, packet_ID, remote_ip, remote_port, PacketType.MSG);
         this.payload = new ArrayList<>();
 
@@ -42,7 +43,7 @@ public class MessagePacket extends Packet {
         // I need to parse the message to deliver it (?)
         this.type = PacketType.MSG;
         this.sender_ID = payload[1];
-        this.packet_ID = Utils.fromBytesToInt(Arrays.copyOfRange(payload, 2, 6));
+        this.packet_ID = Utils.fromBytesToInt(payload, 2);
 
         this.msgs = payload[6];
 

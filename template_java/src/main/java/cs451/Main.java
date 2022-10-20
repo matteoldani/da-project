@@ -6,6 +6,7 @@ import cs451.parser.HostsParser;
 import cs451.parser.Parser;
 import cs451.sender.Sender;
 import cs451.server.ReceiverServer;
+import cs451.utils.Utils;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -22,8 +23,8 @@ public class  Main {
     private static String out_file;
 
     private static void handleSignal() {
-        //immediately stop network packet processing
-        System.out.println("Immediately stopping network packet processing.");
+        // immediately stop network packet processing
+        // System.out.println("Immediately stopping network packet processing.");
 
         if(sender != null){
             sender.stop_thread();
@@ -49,6 +50,7 @@ public class  Main {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        System.out.println("Output written.");
     }
 
     private static void initSignalHandlers() {
@@ -74,27 +76,25 @@ public class  Main {
                 + pid + "` to stop processing packets\n");
 
         System.out.println("My ID: " + parser.myId() + "\n");
-        System.out.println("List of resolved hosts is:");
-        System.out.println("==========================");
-        for (Host host: parser.hosts()) {
-            System.out.println(host.getId());
-            System.out.println("Human-readable IP: " + host.getIp());
-            System.out.println("Human-readable Port: " + host.getPort());
-            System.out.println();
-        }
-        System.out.println();
+//        System.out.println("List of resolved hosts is:");
+//        System.out.println("==========================");
+//        for (Host host: parser.hosts()) {
+//            System.out.println(host.getId());
+//            System.out.println("Human-readable IP: " + host.getIp());
+//            System.out.println("Human-readable Port: " + host.getPort());
+//            System.out.println();
+//        }
+//        System.out.println();
+//
+//        System.out.println("Path to output:");
+//        System.out.println("===============");
+//        System.out.println(parser.output() + "\n");
+//
+//        System.out.println("Path to config:");
+//        System.out.println("===============");
+//        System.out.println(parser.config() + "\n");
 
-        System.out.println("Path to output:");
-        System.out.println("===============");
-        System.out.println(parser.output() + "\n");
 
-        System.out.println("Path to config:");
-        System.out.println("===============");
-        System.out.println(parser.config() + "\n");
-
-        System.out.println("Doing some initialization\n");
-
-        // starting the receiver server
         out_file = parser.output();
 
         ConfigParser configParser = new ConfigParser();
@@ -102,26 +102,22 @@ public class  Main {
 
         link = new StubbornLink();
         receiverServer = new ReceiverServer(link,
-                1024,
-                parser.hosts().get(parser.myId() - 1).getPort(), parser.hosts());
+                103,
+                parser.hosts().get(parser.myId()-1).getPort(),
+                parser.hosts());
+
         new Thread(receiverServer).start();
 
         // I should build a sender only if I'm not the target
         if(configParser.getReceiver_ID() != (byte) parser.myId()){
-            System.out.println("DEBUG: I am not the receiver, my ID is: " + parser.myId());
-            System.out.println("DEBUG: The receiver ID is: " + configParser.getReceiver_ID());
-
             sender = new Sender(parser.hosts().get(parser.myId()-1),
                     configParser.getNumber_of_msgs(),
                     parser.hosts().get(configParser.getReceiver_ID()-1),
                     link);
             new Thread(sender).start();
         }else{
-            System.out.println("DEBUG: I am the receiver, my ID is: " + parser.myId());
             sender = null;
         }
-
-        System.out.println("Broadcasting and delivering messages...\n");
 
         // After a process finishes broadcasting,
         // it waits forever for the delivery of messages.

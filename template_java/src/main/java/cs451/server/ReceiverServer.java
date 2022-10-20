@@ -19,7 +19,7 @@ public class ReceiverServer implements Runnable{
 
     private Link link;
     private DatagramSocket socket;
-    private byte[] buff;
+    private int buff_size;
 
     private List<Host>  hosts;
 
@@ -29,14 +29,13 @@ public class ReceiverServer implements Runnable{
 
     public ReceiverServer(Link link, int buff_Size, int port, List<Host> hosts){
         this.link = link;
-        this.buff = new byte[buff_Size];
+        this.buff_size = buff_Size;
         this.stop = false;
         this.hosts = hosts;
 
         this.to_handle = new LinkedBlockingQueue<>();
 
         try {
-            System.out.println("DEBUG: the server is using port: " + port);
             this.socket = new DatagramSocket(port);
         } catch (SocketException e) {
             throw new RuntimeException(e);
@@ -55,12 +54,13 @@ public class ReceiverServer implements Runnable{
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+
             byte[] payload = packet.getData();
-            System.err.println("DEBUG: message payload: ");
-            for(int i=0; i<payload.length;i++){
-                System.out.print(payload[i]);
-            }
-            System.out.println("DEBUG: End of packet");
+//            System.err.println("DEBUG: message payload: ");
+//            for(int i=0; i<payload.length;i++){
+//                System.out.print(payload[i] + " ");
+//            }
+//            System.out.println("\nDEBUG: End of packet");
 
             // check the type of packet
             if(payload[0] == 0){
@@ -69,7 +69,7 @@ public class ReceiverServer implements Runnable{
                 link.deliver(msg);
 
                 // I need to send an ack
-                // I can build the packet by myself, for performance sake
+                // I can build the packet by myself, for performance's sake
                 byte[] ack_payload = new byte[6];
 
                 // specify the type
@@ -85,7 +85,7 @@ public class ReceiverServer implements Runnable{
                 packet = new DatagramPacket(ack_payload, ack_payload.length,
                         packet.getAddress(), hosts.get(msg.getSender_ID()-1).getPort());
 
-                System.out.println("DEBUG: sending the ack packet to: " + packet.getPort());
+//                System.out.println("DEBUG: sending the ack packet to: " + packet.getPort());
                 try {
                     socket.send(packet);
                 } catch (IOException e) {
@@ -96,9 +96,8 @@ public class ReceiverServer implements Runnable{
                 // ACK type
                 AckPacket ack = new AckPacket(payload);
                 link.receive_ack(ack);
-
             }else {
-                System.err.println("The message has an invalid type: "+payload[0]);
+                System.err.println("The message has an invalid type: " + payload[0]);
             }
         }
 
@@ -106,13 +105,12 @@ public class ReceiverServer implements Runnable{
 
     @Override
     public void run() {
-        System.out.println("DEBUG: The receiver has been started");
         new Thread(this::handlePacket).start();
         while(!this.stop){
+            byte[] buff = new byte[buff_size];
             DatagramPacket packet = new DatagramPacket(buff, buff.length);
             try {
                 socket.receive(packet);
-                System.out.println("DEBUG: Packet receive");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
