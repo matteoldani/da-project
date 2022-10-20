@@ -35,14 +35,14 @@ public class  Main {
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(out_file))) {
             if(sender != null){
                 for(Integer id: sender.getBroadcasted()){
-                    String message = "b " + id.toString();
+                    String message = "b " + id.toString() + '\n';
                     bufferedWriter.write(message);
                 }
             }
 
             for (Map.Entry<Integer, Byte> pair:
                     link.getDelivered()) {
-                String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString();
+                String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
                 bufferedWriter.write(message);
             }
 
@@ -103,17 +103,21 @@ public class  Main {
         link = new StubbornLink();
         receiverServer = new ReceiverServer(link,
                 1024,
-                parser.hosts().get(parser.myId()).getPort());
+                parser.hosts().get(parser.myId() - 1).getPort(), parser.hosts());
         new Thread(receiverServer).start();
 
         // I should build a sender only if I'm not the target
-        if(configParser.getReceiver_ID() != parser.myId()){
-            sender = new Sender(parser.hosts().get(parser.myId()),
+        if(configParser.getReceiver_ID() != (byte) parser.myId()){
+            System.out.println("DEBUG: I am not the receiver, my ID is: " + parser.myId());
+            System.out.println("DEBUG: The receiver ID is: " + configParser.getReceiver_ID());
+
+            sender = new Sender(parser.hosts().get(parser.myId()-1),
                     configParser.getNumber_of_msgs(),
-                    parser.hosts().get(configParser.getReceiver_ID()),
+                    parser.hosts().get(configParser.getReceiver_ID()-1),
                     link);
             new Thread(sender).start();
         }else{
+            System.out.println("DEBUG: I am the receiver, my ID is: " + parser.myId());
             sender = null;
         }
 

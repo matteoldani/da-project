@@ -46,14 +46,24 @@ public class StubbornLink extends Link{
         // Start thread sending and resending
         new Thread(this::send).start();
 
-        new Thread(this::re_send).start();
+        // DEBUG not starting the resend to better track the messages
+        // new Thread(this::re_send).start();
 
     }
 
     public void deliver(MessagePacket msg){
+        byte sender_ID = msg.getSender_ID();
+        byte[] payload = msg.getPayload_b();
+        for(int i=7; i<payload.length; i++){
+            int msg_len = payload[i];
+            int id_message
+        }
         Map.Entry<Integer, Byte> e = new AbstractMap.SimpleEntry<>(msg.getPacket_ID(), msg.getSender_ID());
         if(!delivered.contains(e)){
-            // perfectLink.deliver(msg);
+            System.out.println("DEBUG: delivering messages from -> "
+                    + msg.getSender_ID()
+                    + " with ID -> "
+                    + msg.getPacket_ID());
             delivered.add(e);
         }
     }
@@ -66,6 +76,11 @@ public class StubbornLink extends Link{
      */
     public void receive_ack(AckPacket ack){
         acked.add(ack.getPacket_ID());
+        System.out.println("DEBUG: list of acked packages: ");
+        for(Integer id : acked){
+            System.out.print(id + " ");
+        }
+        System.out.println();
     }
 
     /**
@@ -92,7 +107,9 @@ public class StubbornLink extends Link{
                     MessagePacket msg_pkt = to_send.take();
                     to_resend.add(msg_pkt);
                     byte[] msg_payload = msg_pkt.serializePacket();
-
+                    System.out.println("DEBUG: sending message to port: " + msg_pkt.getPort());
+                    System.out.println("DEBUG: message type is -> " + msg_pkt.getType());
+                    System.out.println("DEBUG: message payload[0] = " + msg_payload[0]);
                     DatagramPacket dg_pkt =
                             new DatagramPacket(msg_payload, msg_payload.length,
                                     msg_pkt.getIp_address(), msg_pkt.getPort());

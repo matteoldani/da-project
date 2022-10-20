@@ -4,6 +4,7 @@ import cs451.Host;
 import cs451.Message;
 import cs451.link.StubbornLink;
 import cs451.packet.MessagePacket;
+import cs451.utils.Utils;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -54,7 +55,7 @@ public class Sender implements Runnable{
             if(this.stop){
                 return;
             }
-            msg = new Message(i, fromIntToBytes(i));
+            msg = new Message(i, Utils.fromIntToBytes(i));
             this.broadcasted.add(i);
 
             if(!pkt.addMessage(msg)){
@@ -68,18 +69,6 @@ public class Sender implements Runnable{
         if(pkt.getMsgs() > 0){
             this.link.send_packet(pkt);
         }
-    }
-
-    private byte[] fromIntToBytes(int value){
-
-        byte[] payload = new byte[4];
-
-        payload[0] = (byte) (value & 0xFF);
-        payload[1] = (byte) ((value >>> 8) & 0xFF);
-        payload[2] = (byte) ((value >>> 16) & 0xFF);
-        payload[3] = (byte) ((value >>> 24) & 0xFF);
-
-        return payload;
     }
 
     public void stop_thread(){
