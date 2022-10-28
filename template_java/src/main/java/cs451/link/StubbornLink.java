@@ -59,7 +59,7 @@ public class StubbornLink extends Link{
         byte sender_ID = msg.getSender_ID();
         byte[] payload = msg.getPayload_b();
 
-        int msgs = Math.max(msg.getMsgs(), 8);
+        int msgs = msg.getMsgs();
 
         int pos = 7;
 //        System.out.println("DEBUG: msgs -> " + msgs);
