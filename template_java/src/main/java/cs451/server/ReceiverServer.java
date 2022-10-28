@@ -23,7 +23,7 @@ public class ReceiverServer implements Runnable{
 
     private List<Host>  hosts;
 
-    private boolean stop;
+    private Boolean stop;
 
     private BlockingQueue<DatagramPacket> to_handle;
 
@@ -46,7 +46,12 @@ public class ReceiverServer implements Runnable{
 
     private void handlePacket(){
 
-        while(!this.stop){
+        while(true){
+            synchronized (this.stop){
+                if(this.stop){
+                    return;
+                }
+            }
             DatagramPacket packet;
             if(to_handle.isEmpty()){Thread.yield();}
             try {
@@ -106,7 +111,12 @@ public class ReceiverServer implements Runnable{
     @Override
     public void run() {
         new Thread(this::handlePacket).start();
-        while(!this.stop){
+        while(true){
+            synchronized (this.stop){
+                if(this.stop){
+                    return;
+                }
+            }
             byte[] buff = new byte[buff_size];
             DatagramPacket packet = new DatagramPacket(buff, buff.length);
             try {
@@ -118,11 +128,15 @@ public class ReceiverServer implements Runnable{
             to_handle.add(packet);
 
             // TODO: Check performance if a Thread.yield() is placed here.
+            // Thread.yield();
         }
     }
 
 
     public void stop_thread(){
-        this.stop = true;
+        synchronized (this.stop){
+
+            this.stop = true;
+        }
     }
 }

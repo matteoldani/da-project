@@ -21,15 +21,17 @@ public class StubbornLink extends Link{
     private Set<Map.Entry<Integer, Byte>> delivered;
     private DatagramSocket ds;
 
-    private boolean stop;
+    private Boolean stop;
 
     public StubbornLink(){
 
         // Created the two queues used to handle sending of a message
         this.to_send = new LinkedBlockingQueue<>();
         this.to_resend = new LinkedBlockingQueue<>();
-        this.acked = ConcurrentHashMap.newKeySet();
-        this.delivered = ConcurrentHashMap.newKeySet();
+        // this.acked = ConcurrentHashMap.newKeySet();
+        // this.delivered = ConcurrentHashMap.newKeySet();
+        this.delivered =  new HashSet<>();
+        this.acked = new TreeSet<>();
         this.stop = false;
 
         // Starting the socket
@@ -43,7 +45,7 @@ public class StubbornLink extends Link{
         new Thread(this::send).start();
 
         // DEBUG not starting the resend to better track the messages
-         new Thread(this::re_send).start();
+        new Thread(this::re_send).start();
 
     }
 
@@ -57,25 +59,30 @@ public class StubbornLink extends Link{
         byte sender_ID = msg.getSender_ID();
         byte[] payload = msg.getPayload_b();
 
-        int msgs = msg.getMsgs();
+        int msgs = Math.max(msg.getMsgs(), 8);
 
         int pos = 7;
 //        System.out.println("DEBUG: msgs -> " + msgs);
+        int message_len = 4;
         for(int i=0; i<msgs; i++) {
-            int message_len = Utils.fromBytesToInt(payload, pos);
-            pos+=4;
+//            int message_len = Utils.fromBytesToInt(payload, pos);
+//            pos+=4;
             int id_message = Utils.fromBytesToInt(payload, pos);
-            pos += (message_len - 4);
+//            pos += (message_len - 4);
+            pos+= message_len;
             Map.Entry<Integer, Byte> e =
                     new AbstractMap.SimpleEntry<>(id_message,
                             sender_ID);
-            if (!delivered.contains(e)) {
+            //synchronized (delivered){
+
+                if (!delivered.contains(e)) {
 //                System.out.println("DEBUG: delivering messages from -> "
 //                        + sender_ID
 //                        + " with ID -> "
 //                        + id_message);
-                delivered.add(e);
-            }
+                    delivered.add(e);
+                }
+            //}
         }
     }
 
@@ -86,12 +93,15 @@ public class StubbornLink extends Link{
      * @param ack is the packet containing the ack
      */
     public void receive_ack(AckPacket ack){
-        acked.add(ack.getPacket_ID());
+        synchronized (acked){
+
+            acked.add(ack.getPacket_ID());
 //        System.out.println("DEBUG: list of acked packages: ");
 //        for(Integer id : acked){
 //            System.out.print(id + " ");
 //        }
 //        System.out.println();
+        }
     }
 
     /**
@@ -110,7 +120,12 @@ public class StubbornLink extends Link{
      */
     private void send(){
 
-        while(!this.stop){
+        while(true){
+            synchronized (this.stop){
+                if(this.stop){
+                    return;
+                }
+            }
             if(to_send.isEmpty()){
                 Thread.yield();
             }else{
@@ -141,17 +156,25 @@ public class StubbornLink extends Link{
      * of 30ms to give priorities to the sending queue.
      */
     private void re_send(){
-        while(!this.stop){
+        while(true){
+            synchronized (this.stop){
+                if(this.stop){
+                    return;
+                }
+            }
             if(to_resend.isEmpty()){
                 Thread.yield();
             }else{
                 try {
                     MessagePacket msg = to_resend.take();
-                    if(acked.contains(msg.getPacket_ID())){
-                        // I don't have to re_send it again
-                        // I can remove it from the Set
-                        acked.remove(msg.getPacket_ID());
-                        continue;
+                    synchronized (acked){
+
+                        if(acked.contains(msg.getPacket_ID())){
+                            // I don't have to re_send it again
+                            // I can remove it from the Set
+                            acked.remove(msg.getPacket_ID());
+                            continue;
+                        }
                     }
                     byte[] msg_payload = msg.serializePacket();
                     DatagramPacket dg_pkt =
@@ -162,7 +185,7 @@ public class StubbornLink extends Link{
 
                     // I give priorities to the sending thread,
                     // 30 may need to be tuned
-                    Thread.sleep(30);
+                    // Thread.sleep(30);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 } catch (IOException e) {
@@ -173,10 +196,14 @@ public class StubbornLink extends Link{
     }
 
     public void stop_thread(){
-        this.stop = true;
+        synchronized (this.stop){
+            this.stop = true;
+        }
     }
 
     public Set<Map.Entry<Integer, Byte>> getDelivered() {
-        return delivered;
+        //synchronized (delivered){
+            return delivered;
+       // }
     }
 }

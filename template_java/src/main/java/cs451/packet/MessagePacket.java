@@ -67,17 +67,17 @@ public class MessagePacket extends Packet {
 
         byte[] id_bytes = Utils.fromIntToBytes(msg.getID());
         byte[] payload = msg.getPayload();
-        byte[] len_msg = Utils.fromIntToBytes(payload.length + 8);
+//        byte[] len_msg = Utils.fromIntToBytes(payload.length + 8);
 
-        //adding the message length
-        for(int i=0; i<len_msg.length; i++){
-            this.payload.add(len_msg[i]);
-        }
+//        //adding the message length
+//        for(int i=0; i<len_msg.length; i++){
+//            this.payload.add(len_msg[i]);
+//        }
 
-        //adding the ID
-        for(int i=0; i<id_bytes.length; i++){
-            this.payload.add(id_bytes[i]);
-        }
+//        //adding the ID
+//        for(int i=0; i<id_bytes.length; i++){
+//            this.payload.add(id_bytes[i]);
+//        }
 
         //adding the payload
         for(int i=0; i<msg.getPayload().length; i++){

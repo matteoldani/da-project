@@ -102,7 +102,7 @@ public class  Main {
 
         link = new StubbornLink();
         receiverServer = new ReceiverServer(link,
-                103,
+                /*103*/39,
                 parser.hosts().get(parser.myId()-1).getPort(),
                 parser.hosts());
 

@@ -21,7 +21,7 @@ public class Sender implements Runnable{
     private StubbornLink link;
 
     private List<Integer> broadcasted;
-    private boolean stop;
+    private Boolean stop;
 
     public Sender(Host host, int m, Host dest_host, StubbornLink link){
         this.host = host;
@@ -52,8 +52,10 @@ public class Sender implements Runnable{
         this.pkt_id++;
 
         for(int i=1; i <= m; i++){
-            if(this.stop){
-                return;
+            synchronized (this.stop){
+                if(this.stop){
+                    return;
+                }
             }
             msg = new Message(i, Utils.fromIntToBytes(i));
             this.broadcasted.add(i);
@@ -72,8 +74,11 @@ public class Sender implements Runnable{
     }
 
     public void stop_thread(){
-        this.stop = true;
-        this.link.stop_thread();
+        synchronized (this.stop){
+            this.stop = true;
+            this.link.stop_thread();
+        }
+
     }
 
     public StubbornLink getLink() {
