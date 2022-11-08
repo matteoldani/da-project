@@ -24,7 +24,6 @@ public class  Main {
 
     private static void handleSignal() {
         // immediately stop network packet processing
-        // System.out.println("Immediately stopping network packet processing.");
 
         if(sender != null){
             sender.stop_thread();
@@ -76,24 +75,6 @@ public class  Main {
                 + pid + "` to stop processing packets\n");
 
         System.out.println("My ID: " + parser.myId() + "\n");
-//        System.out.println("List of resolved hosts is:");
-//        System.out.println("==========================");
-//        for (Host host: parser.hosts()) {
-//            System.out.println(host.getId());
-//            System.out.println("Human-readable IP: " + host.getIp());
-//            System.out.println("Human-readable Port: " + host.getPort());
-//            System.out.println();
-//        }
-//        System.out.println();
-//
-//        System.out.println("Path to output:");
-//        System.out.println("===============");
-//        System.out.println(parser.output() + "\n");
-//
-//        System.out.println("Path to config:");
-//        System.out.println("===============");
-//        System.out.println(parser.config() + "\n");
-
 
         out_file = parser.output();
 
@@ -102,7 +83,7 @@ public class  Main {
 
         link = new StubbornLink();
         receiverServer = new ReceiverServer(link,
-                /*103*/39,
+                39,
                 parser.hosts().get(parser.myId()-1).getPort(),
                 parser.hosts());
 

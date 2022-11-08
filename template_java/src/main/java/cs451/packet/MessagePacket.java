@@ -24,8 +24,6 @@ public class MessagePacket extends Packet {
         super(sender_ID, packet_ID, remote_ip, remote_port, PacketType.MSG);
         this.payload = new ArrayList<>();
 
-        // MAX UDP Payload size - space for the sender ID
-        this.remaining_size = 65506;
         // MAX number of messages allowed in one packet
         this.msgs = 0;
     }
@@ -36,9 +34,6 @@ public class MessagePacket extends Packet {
      */
     public MessagePacket(byte[] payload){
         super();
-        // MAX UDP Payload size - space for the sender ID
-        this.remaining_size = 65506 - payload.length;
-        this.msgs = 0;
 
         // I need to parse the message to deliver it (?)
         this.type = PacketType.MSG;
@@ -56,28 +51,12 @@ public class MessagePacket extends Packet {
      * @return true if the message can be added, false if there is no space
      */
     public boolean addMessage(Message msg){
-        // TODO fix the size check when adding the message
-        if(msg.getPayload().length + 8 > remaining_size){
-            return false;
-        }
 
         if(this.msgs == 8){
             return false;
         }
 
-        byte[] id_bytes = Utils.fromIntToBytes(msg.getID());
         byte[] payload = msg.getPayload();
-//        byte[] len_msg = Utils.fromIntToBytes(payload.length + 8);
-
-//        //adding the message length
-//        for(int i=0; i<len_msg.length; i++){
-//            this.payload.add(len_msg[i]);
-//        }
-
-//        //adding the ID
-//        for(int i=0; i<id_bytes.length; i++){
-//            this.payload.add(id_bytes[i]);
-//        }
 
         //adding the payload
         for(int i=0; i<msg.getPayload().length; i++){

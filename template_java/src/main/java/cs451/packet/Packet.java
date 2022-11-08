@@ -38,28 +38,12 @@ public abstract class Packet {
         return sender_ID;
     }
 
-    public byte[] getByte_payload() {
-        return byte_payload;
-    }
-
-    public PacketType getType() {
-        return type;
-    }
-
     public InetAddress getIp_address() {
         return ip_address;
     }
 
-    public void setIp_address(InetAddress ip_address) {
-        this.ip_address = ip_address;
-    }
-
     public int getPort() {
         return port;
-    }
-
-    public void setPort(int port) {
-        this.port = port;
     }
 
     public int getPacket_ID() {

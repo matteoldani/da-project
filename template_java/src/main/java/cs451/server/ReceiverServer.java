@@ -61,11 +61,6 @@ public class ReceiverServer implements Runnable{
             }
 
             byte[] payload = packet.getData();
-//            System.err.println("DEBUG: message payload: ");
-//            for(int i=0; i<payload.length;i++){
-//                System.out.print(payload[i] + " ");
-//            }
-//            System.out.println("\nDEBUG: End of packet");
 
             // check the type of packet
             if(payload[0] == 0){
@@ -90,7 +85,6 @@ public class ReceiverServer implements Runnable{
                 packet = new DatagramPacket(ack_payload, ack_payload.length,
                         packet.getAddress(), hosts.get(msg.getSender_ID()-1).getPort());
 
-//                System.out.println("DEBUG: sending the ack packet to: " + packet.getPort());
                 try {
                     socket.send(packet);
                 } catch (IOException e) {
@@ -126,16 +120,12 @@ public class ReceiverServer implements Runnable{
             }
 
             to_handle.add(packet);
-
-            // TODO: Check performance if a Thread.yield() is placed here.
-            // Thread.yield();
         }
     }
 
 
     public void stop_thread(){
         synchronized (this.stop){
-
             this.stop = true;
         }
     }

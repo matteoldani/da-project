@@ -28,8 +28,6 @@ public class StubbornLink extends Link{
         // Created the two queues used to handle sending of a message
         this.to_send = new LinkedBlockingQueue<>();
         this.to_resend = new LinkedBlockingQueue<>();
-        // this.acked = ConcurrentHashMap.newKeySet();
-        // this.delivered = ConcurrentHashMap.newKeySet();
         this.delivered =  new HashSet<>();
         this.acked = new TreeSet<>();
         this.stop = false;
@@ -43,8 +41,6 @@ public class StubbornLink extends Link{
 
         // Start thread sending and resending
         new Thread(this::send).start();
-
-        // DEBUG not starting the resend to better track the messages
         new Thread(this::re_send).start();
 
     }
@@ -62,27 +58,17 @@ public class StubbornLink extends Link{
         int msgs = msg.getMsgs();
 
         int pos = 7;
-//        System.out.println("DEBUG: msgs -> " + msgs);
         int message_len = 4;
         for(int i=0; i<msgs; i++) {
-//            int message_len = Utils.fromBytesToInt(payload, pos);
-//            pos+=4;
+
             int id_message = Utils.fromBytesToInt(payload, pos);
-//            pos += (message_len - 4);
             pos+= message_len;
             Map.Entry<Integer, Byte> e =
                     new AbstractMap.SimpleEntry<>(id_message,
                             sender_ID);
-            //synchronized (delivered){
-
                 if (!delivered.contains(e)) {
-//                System.out.println("DEBUG: delivering messages from -> "
-//                        + sender_ID
-//                        + " with ID -> "
-//                        + id_message);
                     delivered.add(e);
                 }
-            //}
         }
     }
 
@@ -94,13 +80,7 @@ public class StubbornLink extends Link{
      */
     public void receive_ack(AckPacket ack){
         synchronized (acked){
-
             acked.add(ack.getPacket_ID());
-//        System.out.println("DEBUG: list of acked packages: ");
-//        for(Integer id : acked){
-//            System.out.print(id + " ");
-//        }
-//        System.out.println();
         }
     }
 
@@ -133,9 +113,6 @@ public class StubbornLink extends Link{
                     MessagePacket msg_pkt = to_send.take();
                     to_resend.add(msg_pkt);
                     byte[] msg_payload = msg_pkt.serializePacket();
-//                    System.out.println("DEBUG: sending message to port: " + msg_pkt.getPort());
-//                    System.out.println("DEBUG: message type is -> " + msg_pkt.getType());
-//                    System.out.println("DEBUG: message payload[0] = " + msg_payload[0]);
                     DatagramPacket dg_pkt =
                             new DatagramPacket(msg_payload, msg_payload.length,
                                     msg_pkt.getIp_address(), msg_pkt.getPort());
@@ -185,6 +162,7 @@ public class StubbornLink extends Link{
 
                     // I give priorities to the sending thread,
                     // 30 may need to be tuned
+                    // TODO
                     // Thread.sleep(30);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
@@ -202,8 +180,6 @@ public class StubbornLink extends Link{
     }
 
     public Set<Map.Entry<Integer, Byte>> getDelivered() {
-        //synchronized (delivered){
-            return delivered;
-       // }
+        return delivered;
     }
 }

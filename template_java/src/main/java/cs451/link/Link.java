@@ -2,7 +2,6 @@ package cs451.link;
 
 import cs451.packet.AckPacket;
 import cs451.packet.MessagePacket;
-import cs451.packet.Packet;
 
 public abstract class Link {
 
