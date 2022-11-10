@@ -5,25 +5,25 @@ import java.net.InetAddress;
 public abstract class Packet {
 
     protected PacketType type;
-    protected byte[] byte_payload;
-    protected byte sender_ID;
-    protected int packet_ID;
+    protected byte[] bytePayload;
+    protected byte senderID;
+    protected int packetID;
 
-    protected InetAddress ip_address;
+    protected InetAddress ipAddress;
     protected int port;
     
-    public Packet(byte sender_ID, int packet_ID, InetAddress ip_address, int port, PacketType type){
+    public Packet(byte senderID, int packetID, InetAddress ipAddress, int port, PacketType type){
         this.type = type;
-        this.sender_ID = sender_ID;
-        this.ip_address = ip_address;
+        this.senderID = senderID;
+        this.ipAddress = ipAddress;
         this.port = port;
-        this.packet_ID = packet_ID;
+        this.packetID = packetID;
     }
 
-    public Packet(byte sender_ID, int packet_ID, PacketType type){
+    public Packet(byte senderID, int packetID, PacketType type){
         this.type = type;
-        this.sender_ID = sender_ID;
-        this.packet_ID = packet_ID;
+        this.senderID = senderID;
+        this.packetID = packetID;
     }
 
     public Packet() {
@@ -34,19 +34,19 @@ public abstract class Packet {
         return null;
     }
 
-    public byte getSender_ID() {
-        return sender_ID;
+    public byte getSenderID() {
+        return senderID;
     }
 
-    public InetAddress getIp_address() {
-        return ip_address;
+    public InetAddress getIpAddress() {
+        return ipAddress;
     }
 
     public int getPort() {
         return port;
     }
 
-    public int getPacket_ID() {
-        return packet_ID;
+    public int getPacketID() {
+        return packetID;
     }
 }

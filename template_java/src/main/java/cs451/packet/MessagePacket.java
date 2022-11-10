@@ -5,23 +5,21 @@ import cs451.utils.Utils;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class MessagePacket extends Packet {
 
-    private int remaining_size;
     private byte msgs;
     private ArrayList<Byte> payload;
 
-    private byte [] payload_b;
+    private byte [] payloadByte;
 
     /**
      * constructor to be used when creating a packet to be sent
-     * @param sender_ID the id of the sender of the packet
+     * @param senderID the id of the sender of the packet
      */
-    public MessagePacket(byte sender_ID, int packet_ID, InetAddress remote_ip,
-                         int remote_port){
-        super(sender_ID, packet_ID, remote_ip, remote_port, PacketType.MSG);
+    public MessagePacket(byte senderID, int packetID, InetAddress remoteIp,
+                         int remotePort){
+        super(senderID, packetID, remoteIp, remotePort, PacketType.MSG);
         this.payload = new ArrayList<>();
 
         // MAX number of messages allowed in one packet
@@ -37,12 +35,12 @@ public class MessagePacket extends Packet {
 
         // I need to parse the message to deliver it (?)
         this.type = PacketType.MSG;
-        this.sender_ID = payload[1];
-        this.packet_ID = Utils.fromBytesToInt(payload, 2);
+        this.senderID = payload[1];
+        this.packetID = Utils.fromBytesToInt(payload, 2);
 
         this.msgs = payload[6];
 
-        this.payload_b = payload;
+        this.payloadByte = payload;
     }
 
     /**
@@ -63,7 +61,6 @@ public class MessagePacket extends Packet {
             this.payload.add(payload[i]);
         }
 
-        this.remaining_size -= (payload.length + 8);
         this.msgs += 1;
 
         return true;
@@ -91,11 +88,11 @@ public class MessagePacket extends Packet {
         // adding the type to the payload
         payload[0] = (byte) this.type.ordinal();
         // adding sender ID to the payload
-        payload[1] = sender_ID;
+        payload[1] = senderID;
         // adding packet_ID to payload
-        byte[] packet_ID_tobyte = Utils.fromIntToBytes(packet_ID);
-        for(int i=0; i<packet_ID_tobyte.length;i++){
-            payload[2+i] = packet_ID_tobyte[i];
+        byte[] packetIDTobyte = Utils.fromIntToBytes(packetID);
+        for(int i=0; i<packetIDTobyte.length;i++){
+            payload[2+i] = packetIDTobyte[i];
         }
         payload[6] = this.msgs;
 
@@ -110,7 +107,7 @@ public class MessagePacket extends Packet {
         return msgs;
     }
 
-    public byte[] getPayload_b() {
-        return payload_b;
+    public byte[] getPayloadByte() {
+        return payloadByte;
     }
 }

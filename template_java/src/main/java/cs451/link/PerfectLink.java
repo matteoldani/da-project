@@ -1,36 +1,38 @@
 package cs451.link;
 
-import cs451.Host;
 import cs451.packet.AckPacket;
 import cs451.packet.MessagePacket;
-import cs451.utils.Utils;
 
 import java.io.IOException;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Function;
 
-public class StubbornLink extends Link{
+public class PerfectLink extends Link{
 
-    private BlockingQueue<MessagePacket> to_send;
-    private BlockingQueue<MessagePacket> to_resend;
-    private Set<Integer> acked;
+    private BlockingQueue<MessagePacket> toSend;
+    private BlockingQueue<MessagePacket> toResend;
+//    private Set<Integer> acked;
     /**
      * The Integer is the message ID, the byte is the sender ID
      */
-    private Set<Map.Entry<Integer, Byte>> delivered;
+    private Set<Map.Entry<Byte, Integer>> acked;
+
     private DatagramSocket ds;
 
     private Boolean stop;
 
-    public StubbornLink(){
+    private Function<MessagePacket, Void> deliverMethod;
+
+    public PerfectLink(Function<MessagePacket, Void> deliverMethod){
 
         // Created the two queues used to handle sending of a message
-        this.to_send = new LinkedBlockingQueue<>();
-        this.to_resend = new LinkedBlockingQueue<>();
-        this.delivered =  new HashSet<>();
-        this.acked = new TreeSet<>();
+        this.toSend = new LinkedBlockingQueue<>();
+        this.toResend = new LinkedBlockingQueue<>();
+        this.acked = new HashSet<>();
         this.stop = false;
+        this.deliverMethod = deliverMethod;
 
         // Starting the socket
         try {
@@ -41,7 +43,7 @@ public class StubbornLink extends Link{
 
         // Start thread sending and resending
         new Thread(this::send).start();
-        new Thread(this::re_send).start();
+        new Thread(this::reSend).start();
 
     }
 
@@ -51,25 +53,7 @@ public class StubbornLink extends Link{
      * @param msg
      */
     public void deliver(MessagePacket msg){
-
-        byte sender_ID = msg.getSender_ID();
-        byte[] payload = msg.getPayload_b();
-
-        int msgs = msg.getMsgs();
-
-        int pos = 7;
-        int message_len = 4;
-        for(int i=0; i<msgs; i++) {
-
-            int id_message = Utils.fromBytesToInt(payload, pos);
-            pos+= message_len;
-            Map.Entry<Integer, Byte> e =
-                    new AbstractMap.SimpleEntry<>(id_message,
-                            sender_ID);
-                if (!delivered.contains(e)) {
-                    delivered.add(e);
-                }
-        }
+        this.deliverMethod.apply(msg);
     }
 
     /**
@@ -78,9 +62,9 @@ public class StubbornLink extends Link{
      *
      * @param ack is the packet containing the ack
      */
-    public void receive_ack(AckPacket ack){
+    public void receiveAck(AckPacket ack){
         synchronized (acked){
-            acked.add(ack.getPacket_ID());
+            acked.add(new AbstractMap.SimpleEntry<>(ack.getSenderID(), ack.getPacketID()));
         }
     }
 
@@ -89,8 +73,9 @@ public class StubbornLink extends Link{
      * sent (eventually)
      * @param packet is the packet to be sent
      */
-    public void send_packet(MessagePacket packet){
-        to_send.add(packet);
+    public void sendPacket(MessagePacket packet){
+        toSend.add(packet);
+        System.out.println("Packet add to toSend: " + packet.getPacketID() + " " + packet.getSenderID());
     }
 
     /**
@@ -106,17 +91,17 @@ public class StubbornLink extends Link{
                     return;
                 }
             }
-            if(to_send.isEmpty()){
+            if(toSend.isEmpty()){
                 Thread.yield();
             }else{
                 try {
-                    MessagePacket msg_pkt = to_send.take();
-                    to_resend.add(msg_pkt);
-                    byte[] msg_payload = msg_pkt.serializePacket();
-                    DatagramPacket dg_pkt =
-                            new DatagramPacket(msg_payload, msg_payload.length,
-                                    msg_pkt.getIp_address(), msg_pkt.getPort());
-                    ds.send(dg_pkt);
+                    MessagePacket msgPkt = toSend.take();
+                    toResend.add(msgPkt);
+                    byte[] msgPayload = msgPkt.serializePacket();
+                    DatagramPacket datagramPacket =
+                            new DatagramPacket(msgPayload, msgPayload.length,
+                                    msgPkt.getIpAddress(), msgPkt.getPort());
+                    ds.send(datagramPacket);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 } catch (IOException e) {
@@ -132,33 +117,33 @@ public class StubbornLink extends Link{
      * yield to not slow down the application. Messages are sent with a delay
      * of 30ms to give priorities to the sending queue.
      */
-    private void re_send(){
+    private void reSend(){
         while(true){
             synchronized (this.stop){
                 if(this.stop){
                     return;
                 }
             }
-            if(to_resend.isEmpty()){
+            if(toResend.isEmpty()){
                 Thread.yield();
             }else{
                 try {
-                    MessagePacket msg = to_resend.take();
+                    MessagePacket msg = toResend.take();
                     synchronized (acked){
-
-                        if(acked.contains(msg.getPacket_ID())){
+                        Map.Entry<Byte, Integer> ack = new AbstractMap.SimpleEntry<>(msg.getSenderID(), msg.getPacketID());
+                        if(acked.contains(ack)){
                             // I don't have to re_send it again
                             // I can remove it from the Set
-                            acked.remove(msg.getPacket_ID());
+                            acked.remove(ack);
                             continue;
                         }
                     }
-                    byte[] msg_payload = msg.serializePacket();
-                    DatagramPacket dg_pkt =
-                            new DatagramPacket(msg_payload, msg_payload.length,
-                                    msg.getIp_address(), msg.getPort());
-                    ds.send(dg_pkt);
-                    to_resend.add(msg);
+                    byte[] msgPayload = msg.serializePacket();
+                    DatagramPacket datagramPacket =
+                            new DatagramPacket(msgPayload, msgPayload.length,
+                                    msg.getIpAddress(), msg.getPort());
+                    ds.send(datagramPacket);
+                    toResend.add(msg);
 
                     // I give priorities to the sending thread,
                     // 30 may need to be tuned
@@ -173,13 +158,10 @@ public class StubbornLink extends Link{
         }
     }
 
-    public void stop_thread(){
+    public void stopThread(){
         synchronized (this.stop){
             this.stop = true;
         }
     }
 
-    public Set<Map.Entry<Integer, Byte>> getDelivered() {
-        return delivered;
-    }
 }

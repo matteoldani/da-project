@@ -1,12 +1,8 @@
 package cs451;
 
-import cs451.link.StubbornLink;
 import cs451.parser.ConfigParser;
-import cs451.parser.HostsParser;
 import cs451.parser.Parser;
-import cs451.sender.Sender;
-import cs451.server.ReceiverServer;
-import cs451.utils.Utils;
+import cs451.process.Process;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -16,32 +12,25 @@ import java.util.Map;
 
 public class  Main {
 
-    private static Sender sender;
-    private static ReceiverServer receiverServer;
-
-    private static StubbornLink link;
-    private static String out_file;
+    private static String outFile;
+    private static Process process;
 
     private static void handleSignal() {
-        // immediately stop network packet processing
 
-        if(sender != null){
-            sender.stop_thread();
-        }
-        receiverServer.stop_thread();
+        // immediately stop network packet processing
+        process.stopThread();
+
 
         //write/flush output file if necessary
         System.out.println("Writing output.");
-        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(out_file))) {
-            if(sender != null){
-                for(Integer id: sender.getBroadcasted()){
-                    String message = "b " + id.toString() + '\n';
-                    bufferedWriter.write(message);
-                }
+        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outFile))) {
+            for(Integer id: process.getBroadcasted()){
+                String message = "b " + id.toString() + '\n';
+                bufferedWriter.write(message);
             }
 
             for (Map.Entry<Integer, Byte> pair:
-                    link.getDelivered()) {
+                    process.getDelivered()) {
                 String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
                 bufferedWriter.write(message);
             }
@@ -76,29 +65,12 @@ public class  Main {
 
         System.out.println("My ID: " + parser.myId() + "\n");
 
-        out_file = parser.output();
+        outFile = parser.output();
 
         ConfigParser configParser = new ConfigParser();
         configParser.populate(parser.config());
 
-        link = new StubbornLink();
-        receiverServer = new ReceiverServer(link,
-                39,
-                parser.hosts().get(parser.myId()-1).getPort(),
-                parser.hosts());
-
-        new Thread(receiverServer).start();
-
-        // I should build a sender only if I'm not the target
-        if(configParser.getReceiver_ID() != (byte) parser.myId()){
-            sender = new Sender(parser.hosts().get(parser.myId()-1),
-                    configParser.getNumber_of_msgs(),
-                    parser.hosts().get(configParser.getReceiver_ID()-1),
-                    link);
-            new Thread(sender).start();
-        }else{
-            sender = null;
-        }
+        process = new Process(parser.hosts(), (byte)parser.myId(), configParser.getnumberOfMsgs());
 
         // After a process finishes broadcasting,
         // it waits forever for the delivery of messages.

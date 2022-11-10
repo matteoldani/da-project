@@ -8,8 +8,7 @@ import java.util.List;
 public class ConfigParser {
 
     private String path;
-    private int number_of_msgs;
-    private byte receiver_ID;
+    private int numberOfMsgs;
 
     public boolean populate(String value) {
         File file = new File(value);
@@ -17,11 +16,9 @@ public class ConfigParser {
 
         try {
             List<String> lines = Files.readAllLines(file.toPath());
-            String[] numbers = lines.get(0).split(" ");
-            int m = Integer.valueOf(numbers[0]);
-            byte id = Integer.valueOf(numbers[1]).byteValue();
-            this.number_of_msgs = m;
-            this.receiver_ID = id;
+            String number = lines.get(0).strip();
+            int m = Integer.parseInt(number);
+            this.numberOfMsgs = m;
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -34,11 +31,7 @@ public class ConfigParser {
         return path;
     }
 
-    public int getNumber_of_msgs() {
-        return number_of_msgs;
-    }
-
-    public byte getReceiver_ID() {
-        return receiver_ID;
+    public int getnumberOfMsgs() {
+        return numberOfMsgs;
     }
 }

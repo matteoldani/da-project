@@ -4,12 +4,10 @@ import cs451.Host;
 import cs451.link.Link;
 import cs451.packet.AckPacket;
 import cs451.packet.MessagePacket;
-import cs451.packet.PacketType;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -19,21 +17,21 @@ public class ReceiverServer implements Runnable{
 
     private Link link;
     private DatagramSocket socket;
-    private int buff_size;
+    private int buffSize;
 
     private List<Host>  hosts;
 
     private Boolean stop;
 
-    private BlockingQueue<DatagramPacket> to_handle;
+    private BlockingQueue<DatagramPacket> toHandle;
 
-    public ReceiverServer(Link link, int buff_Size, int port, List<Host> hosts){
+    public ReceiverServer(Link link, int buffSize, int port, List<Host> hosts){
         this.link = link;
-        this.buff_size = buff_Size;
+        this.buffSize = buffSize;
         this.stop = false;
         this.hosts = hosts;
 
-        this.to_handle = new LinkedBlockingQueue<>();
+        this.toHandle = new LinkedBlockingQueue<>();
 
         try {
             this.socket = new DatagramSocket(port);
@@ -53,9 +51,9 @@ public class ReceiverServer implements Runnable{
                 }
             }
             DatagramPacket packet;
-            if(to_handle.isEmpty()){Thread.yield();}
+            if(toHandle.isEmpty()){Thread.yield();}
             try {
-                packet = to_handle.take();
+                packet = toHandle.take();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -70,20 +68,20 @@ public class ReceiverServer implements Runnable{
 
                 // I need to send an ack
                 // I can build the packet by myself, for performance's sake
-                byte[] ack_payload = new byte[6];
+                byte[] ackPayload = new byte[6];
 
                 // specify the type
-                ack_payload[0] = 1;
+                ackPayload[0] = 1;
                 // specify the sender ID
-                ack_payload[1] = payload[1];
+                ackPayload[1] = payload[1];
                 // specify the Packet_number
-                ack_payload[2] = payload[2];
-                ack_payload[3] = payload[3];
-                ack_payload[4] = payload[4];
-                ack_payload[5] = payload[5];
+                ackPayload[2] = payload[2];
+                ackPayload[3] = payload[3];
+                ackPayload[4] = payload[4];
+                ackPayload[5] = payload[5];
 
-                packet = new DatagramPacket(ack_payload, ack_payload.length,
-                        packet.getAddress(), hosts.get(msg.getSender_ID()-1).getPort());
+                packet = new DatagramPacket(ackPayload, ackPayload.length,
+                        packet.getAddress(), hosts.get(msg.getSenderID()-1).getPort());
 
                 try {
                     socket.send(packet);
@@ -94,7 +92,7 @@ public class ReceiverServer implements Runnable{
             }else if (payload[0] == 1){
                 // ACK type
                 AckPacket ack = new AckPacket(payload);
-                link.receive_ack(ack);
+                link.receiveAck(ack);
             }else {
                 System.err.println("The message has an invalid type: " + payload[0]);
             }
@@ -111,7 +109,7 @@ public class ReceiverServer implements Runnable{
                     return;
                 }
             }
-            byte[] buff = new byte[buff_size];
+            byte[] buff = new byte[buffSize];
             DatagramPacket packet = new DatagramPacket(buff, buff.length);
             try {
                 socket.receive(packet);
@@ -119,12 +117,12 @@ public class ReceiverServer implements Runnable{
                 throw new RuntimeException(e);
             }
 
-            to_handle.add(packet);
+            toHandle.add(packet);
         }
     }
 
 
-    public void stop_thread(){
+    public void stopThread(){
         synchronized (this.stop){
             this.stop = true;
         }
