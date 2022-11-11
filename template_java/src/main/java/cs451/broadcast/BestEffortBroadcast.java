@@ -13,17 +13,14 @@ import java.util.function.Function;
 
 public class BestEffortBroadcast extends Broadcast {
 
-    private List<Host> hosts;
     private int pktID;
-    private byte hostID;
     private Boolean stopThread;
 
 
     public BestEffortBroadcast(List<Host> hosts, byte hostID, Function<MessagePacket, Void> deliverMethod){
+        super(hosts, hostID);
         this.pl = new PerfectLink(this::deliver);
-        this.hosts = hosts;
         this.pktID = 0;
-        this.hostID = hostID;
         this.stopThread = false;
         this.deliverMethod = deliverMethod;
     }
@@ -34,7 +31,7 @@ public class BestEffortBroadcast extends Broadcast {
             try {
                 MessagePacket pkt = new MessagePacket(this.hostID, this.hostID, this.pktID, InetAddress.getByName(h.getIp()), h.getPort());
                 Message msg;
-                this.pktID++;
+
                 // I should be sure that the number of messages fits the packet
                 for(int i=mStart; i<mEnd; i++){
                     msg = new Message(i, Utils.fromIntToBytes(i));
@@ -45,9 +42,9 @@ public class BestEffortBroadcast extends Broadcast {
                 throw new RuntimeException(e);
             }
         }
+        this.pktID++;
     }
 
-    @Override
     public void broadcast(MessagePacket msg){
         for(Host h: this.hosts){
             // TODO do not send to myself, just pretend that I delivered it

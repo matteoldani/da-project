@@ -2,6 +2,7 @@ package cs451.link;
 
 import cs451.packet.AckPacket;
 import cs451.packet.MessagePacket;
+import cs451.utils.Triplet;
 
 import java.io.IOException;
 import java.net.*;
@@ -13,12 +14,11 @@ public class PerfectLink extends Link{
 
     private BlockingQueue<MessagePacket> toSend;
     private BlockingQueue<MessagePacket> toResend;
-//    private Set<Integer> acked;
-    /**
-     * The Integer is the message ID, the byte is the sender ID
-     */
+
     // TODO check if I can avoid saving the object and just move to a triplet
     private Set<AckPacket> acked;
+
+    private Set<Triplet> delivered;
 
     private DatagramSocket ds;
 
@@ -34,6 +34,7 @@ public class PerfectLink extends Link{
         this.acked = new HashSet<>();
         this.stop = false;
         this.deliverMethod = deliverMethod;
+        this.delivered = new HashSet<>();
 
         // Starting the socket
         try {
@@ -54,7 +55,11 @@ public class PerfectLink extends Link{
      * @param msg
      */
     public void deliver(MessagePacket msg){
-        this.deliverMethod.apply(msg);
+        Triplet triplet = new Triplet(msg.getPacketID(), msg.getSenderID(), msg.getOriginalSenderID());
+        if(!delivered.contains(triplet)){
+            delivered.add(triplet);
+            this.deliverMethod.apply(msg);
+        }
     }
 
     /**

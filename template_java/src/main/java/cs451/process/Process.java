@@ -3,6 +3,7 @@ package cs451.process;
 import cs451.Host;
 import cs451.broadcast.BestEffortBroadcast;
 import cs451.broadcast.Broadcast;
+import cs451.broadcast.FIFOBroadcast;
 import cs451.broadcast.UniformReliableBroadcast;
 import cs451.packet.MessagePacket;
 import cs451.sender.Sender;
@@ -15,7 +16,7 @@ public class Process {
 
     private Sender sender;
     private ReceiverServer server;
-    private Set<Map.Entry<Integer, Byte>> delivered;
+    private List<Map.Entry<Integer, Byte>> delivered;
     private List<Host> hosts;
     private byte hostID;
     private boolean stop;
@@ -26,9 +27,9 @@ public class Process {
         this.hosts = hosts;
         this.stop = false;
 
-        this.delivered = new HashSet<>();
+        this.delivered = new LinkedList<>();
 
-        Broadcast b = new UniformReliableBroadcast(hosts, hostID, this::deliver);
+        Broadcast b = new FIFOBroadcast(hosts, hostID, this::deliver);
 
         server = new ReceiverServer(b.getPl(),
                 40,
@@ -42,7 +43,7 @@ public class Process {
     }
 
     private Void deliver(MessagePacket msg){
-        byte senderID = msg.getSenderID();
+        byte senderID = msg.getOriginalSenderID();
         byte[] payload = msg.getPayloadByte();
 
         int msgs = msg.getMsgs();
@@ -56,15 +57,15 @@ public class Process {
             Map.Entry<Integer, Byte> e =
                     new AbstractMap.SimpleEntry<>(idMessage,
                             senderID);
-            if (!delivered.contains(e)) {
-                delivered.add(e);
-            }
+
+            delivered.add(e);
+
         }
 
         return null;
     }
 
-    public Set<Map.Entry<Integer, Byte>> getDelivered(){
+    public List<Map.Entry<Integer, Byte>> getDelivered(){
         return this.delivered;
     }
 

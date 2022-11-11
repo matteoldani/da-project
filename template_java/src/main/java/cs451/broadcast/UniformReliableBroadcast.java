@@ -13,7 +13,7 @@ public class UniformReliableBroadcast extends Broadcast{
 
     /**
      * Data structure containing the message acked:
-     *  - Needs store for every message (packetID, senderID) the
+     *  - Needs store for every message (originalSenderID, packetID) the
      *      list of processes which had acked it (List<SenderID>)
      */
 
@@ -25,21 +25,22 @@ public class UniformReliableBroadcast extends Broadcast{
      */
 
     private HashSet<Map.Entry<Byte, Integer>> pending;
-
-    private List<Host> hosts;
-    private int pktID;
-    private byte hostID;
     private Function<MessagePacket, Void> deliverMethod;
+
+    /**
+     * Stores the pair <originalSenderID, pktID>
+     *     to be sure to only deliver the real packet once
+     */
+    private Set<Map.Entry<Byte, Integer>> delivered;
 
 
     public UniformReliableBroadcast(List<Host> hosts, byte hostID, Function<MessagePacket, Void> deliverMethod){
+        super(hosts, hostID);
         this.acks = new HashMap<>();
         this.pending = new HashSet<>();
         this.bestEffortBroadcast = new BestEffortBroadcast(hosts, hostID, this::deliver);
-
-        this.hosts = hosts;
-        this.hostID = hostID;
         this.deliverMethod = deliverMethod;
+        this.delivered = new HashSet<>();
 
     }
 
@@ -49,10 +50,17 @@ public class UniformReliableBroadcast extends Broadcast{
         // if yes add the current sender to the list
         // if no, create the entry
         Map.Entry<Byte, Integer> msgKey = new AbstractMap.SimpleEntry<>(msg.getOriginalSenderID(), msg.getPacketID());
+
+        //if this message has already been delivered, do nothing
+        if(delivered.contains(msgKey)){
+            return null;
+        }
+
         if(this.acks.containsKey(msgKey)){
             Set<Byte> list = this.acks.get(msgKey);
             // add the sender to the list of processes that have received that message
             list.add(msg.getSenderID());
+            this.acks.put(msgKey, list);
         }else{
             this.acks.put(msgKey, new HashSet<>());
         }
@@ -66,14 +74,16 @@ public class UniformReliableBroadcast extends Broadcast{
             msg.setSenderID(this.hostID);
 
             // ask to broadcast the new message
-            broadcast(msg);
+            this.bestEffortBroadcast.broadcast(msg);
         }
 
         // TODO
-        // I'm doing the check for the delivey here, It may be worth spawning a separate thread
+        // I'm doing the check for the delivery here, It may be worth spawning a separate thread
         if(canDeliver(msgKey)){
             // If I can deliver, send the message to the level above
+            this.delivered.add(msgKey);
             this.deliverMethod.apply(msg);
+//            System.out.println("Delivering from the URB with original sender: " + msg.getOriginalSenderID() + " and pkt id: " + msg.getPacketID());
         }
         return null;
     }
@@ -93,14 +103,6 @@ public class UniformReliableBroadcast extends Broadcast{
     }
 
     @Override
-    public void broadcast(MessagePacket msg){
-        // TODO just a temporary implementation
-        int pktID = bestEffortBroadcast.getPktID();
-        pending.add(new AbstractMap.SimpleEntry<>(this.hostID, pktID));
-        bestEffortBroadcast.broadcast(msg);
-    }
-
-    @Override
     public void stopThread() {
         this.bestEffortBroadcast.stopThread();
     }
@@ -112,7 +114,7 @@ public class UniformReliableBroadcast extends Broadcast{
 
     private boolean canDeliver(Map.Entry<Byte, Integer> msgKey){
         // if I have a pending message which has received a majority of acks, then I can deliver it
-        if(pending.contains(msgKey) && acks.containsKey(msgKey) && acks.get(msgKey).size() > (this.hosts.size()/2) + 1){
+        if(pending.contains(msgKey) && acks.getOrDefault(msgKey, new HashSet<>()).size() > (this.hosts.size()/2)){
             return true;
         }
         return false;
