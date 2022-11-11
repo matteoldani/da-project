@@ -13,7 +13,6 @@ import java.util.function.Function;
 
 public class BestEffortBroadcast extends Broadcast {
 
-
     private List<Host> hosts;
     private int pktID;
     private byte hostID;
@@ -33,7 +32,7 @@ public class BestEffortBroadcast extends Broadcast {
         for(Host h: this.hosts){
             // TODO do not send to myself, just pretend that I delivered it
             try {
-                MessagePacket pkt = new MessagePacket(this.hostID, this.pktID, InetAddress.getByName(h.getIp()), h.getPort());
+                MessagePacket pkt = new MessagePacket(this.hostID, this.hostID, this.pktID, InetAddress.getByName(h.getIp()), h.getPort());
                 Message msg;
                 this.pktID++;
                 // I should be sure that the number of messages fits the packet
@@ -45,6 +44,22 @@ public class BestEffortBroadcast extends Broadcast {
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    @Override
+    public void broadcast(MessagePacket msg){
+        for(Host h: this.hosts){
+            // TODO do not send to myself, just pretend that I delivered it
+            // TODO be sure that the original sender/real sender are correct
+            try {
+                MessagePacket pkt = new MessagePacket(InetAddress.getByName(h.getIp()),
+                        h.getPort(), msg.getPayloadByte());
+                this.pl.sendPacket(pkt);
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
+            }
+
         }
     }
 
@@ -64,5 +79,9 @@ public class BestEffortBroadcast extends Broadcast {
 
     public PerfectLink getPl(){
         return this.pl;
+    }
+
+    public int getPktID() {
+        return pktID;
     }
 }

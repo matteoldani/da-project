@@ -3,6 +3,7 @@ package cs451.process;
 import cs451.Host;
 import cs451.broadcast.BestEffortBroadcast;
 import cs451.broadcast.Broadcast;
+import cs451.broadcast.UniformReliableBroadcast;
 import cs451.packet.MessagePacket;
 import cs451.sender.Sender;
 import cs451.server.ReceiverServer;
@@ -27,10 +28,10 @@ public class Process {
 
         this.delivered = new HashSet<>();
 
-        Broadcast b = new BestEffortBroadcast(hosts, hostID, this::deliver);
+        Broadcast b = new UniformReliableBroadcast(hosts, hostID, this::deliver);
 
         server = new ReceiverServer(b.getPl(),
-                39,
+                40,
                 hosts.get(hostID-1).getPort(),
                 hosts);
 
@@ -46,7 +47,7 @@ public class Process {
 
         int msgs = msg.getMsgs();
 
-        int pos = 7;
+        int pos = 8;
         int messageLen = 4;
         for(int i=0; i<msgs; i++) {
 

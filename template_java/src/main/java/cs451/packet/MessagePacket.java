@@ -17,13 +17,24 @@ public class MessagePacket extends Packet {
      * constructor to be used when creating a packet to be sent
      * @param senderID the id of the sender of the packet
      */
-    public MessagePacket(byte senderID, int packetID, InetAddress remoteIp,
+    public MessagePacket(byte senderID, byte originalSenderID,
+                         int packetID, InetAddress remoteIp,
                          int remotePort){
-        super(senderID, packetID, remoteIp, remotePort, PacketType.MSG);
+        super(senderID, originalSenderID, packetID, remoteIp,
+                remotePort, PacketType.MSG);
         this.payload = new ArrayList<>();
 
         // MAX number of messages allowed in one packet
         this.msgs = 0;
+        this.payloadByte = null;
+    }
+
+    public MessagePacket(InetAddress remoteIp, int remotePort, byte[] payloadByte){
+        super(payloadByte[1], payloadByte[2], Utils.fromBytesToInt(payloadByte, 3),
+                remoteIp, remotePort, PacketType.MSG);
+
+        this.payloadByte = payloadByte;
+        // TODO add msgs here if needed
     }
 
     /**
@@ -36,9 +47,10 @@ public class MessagePacket extends Packet {
         // I need to parse the message to deliver it (?)
         this.type = PacketType.MSG;
         this.senderID = payload[1];
-        this.packetID = Utils.fromBytesToInt(payload, 2);
+        this.originalSenderID = payload[2];
+        this.packetID = Utils.fromBytesToInt(payload, 3);
 
-        this.msgs = payload[6];
+        this.msgs = payload[7];
 
         this.payloadByte = payload;
     }
@@ -83,23 +95,28 @@ public class MessagePacket extends Packet {
      */
     public byte[] serializePacket(){
 
-        byte[] payload = new byte[this.payload.size()+7];
+        if(this.payloadByte != null){
+            return this.payloadByte;
+        }
+
+        byte[] payload = new byte[this.payload.size()+8];
 
         // adding the type to the payload
         payload[0] = (byte) this.type.ordinal();
         // adding sender ID to the payload
-        payload[1] = senderID;
+        payload[1] = this.senderID;
+        payload[2] = this.originalSenderID;
         // adding packet_ID to payload
         byte[] packetIDTobyte = Utils.fromIntToBytes(packetID);
         for(int i=0; i<packetIDTobyte.length;i++){
-            payload[2+i] = packetIDTobyte[i];
+            payload[3+i] = packetIDTobyte[i];
         }
-        payload[6] = this.msgs;
+        payload[7] = this.msgs;
 
         for(int i=0; i<this.payload.size(); i++){
-            payload[i+7] = this.payload.get(i);
+            payload[i+8] = this.payload.get(i);
         }
-
+        this.payloadByte = payload;
         return payload;
     }
 
@@ -108,6 +125,15 @@ public class MessagePacket extends Packet {
     }
 
     public byte[] getPayloadByte() {
-        return payloadByte;
+        return this.payloadByte;
+    }
+
+    @Override
+    public void setSenderID(byte senderID) {
+        // I need to change both the param and the payload byte if it;s defined
+        this.senderID = senderID;
+        if(this.payloadByte != null){
+            this.payloadByte[1] = senderID;
+        }
     }
 }

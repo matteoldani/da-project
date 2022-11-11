@@ -11,13 +11,10 @@ public abstract class Broadcast {
     protected Function<MessagePacket, Void> deliverMethod;
     protected PerfectLink pl;
 
-    public void broadcast(int mStart, int mEnd){}
-    public Void deliver(MessagePacket msg){
-        return null;
-    }
-    public void stopThread(){}
-    public PerfectLink getPl(){
-        return null;
-    }
+    public abstract void broadcast(int mStart, int mEnd);
+    public abstract void broadcast(MessagePacket msg);
+    public abstract Void deliver(MessagePacket msg);
+    public abstract void stopThread();
+    public abstract PerfectLink getPl();
 
 }

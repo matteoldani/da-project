@@ -17,7 +17,8 @@ public class PerfectLink extends Link{
     /**
      * The Integer is the message ID, the byte is the sender ID
      */
-    private Set<Map.Entry<Byte, Integer>> acked;
+    // TODO check if I can avoid saving the object and just move to a triplet
+    private Set<AckPacket> acked;
 
     private DatagramSocket ds;
 
@@ -64,7 +65,7 @@ public class PerfectLink extends Link{
      */
     public void receiveAck(AckPacket ack){
         synchronized (acked){
-            acked.add(new AbstractMap.SimpleEntry<>(ack.getSenderID(), ack.getPacketID()));
+            acked.add(ack);
         }
     }
 
@@ -75,7 +76,7 @@ public class PerfectLink extends Link{
      */
     public void sendPacket(MessagePacket packet){
         toSend.add(packet);
-        System.out.println("Packet add to toSend: " + packet.getPacketID() + " " + packet.getSenderID());
+        // DEBUG System.out.println("Packet add to toSend: " + packet.getPacketID() + " " + packet.getSenderID());
     }
 
     /**
@@ -130,7 +131,7 @@ public class PerfectLink extends Link{
                 try {
                     MessagePacket msg = toResend.take();
                     synchronized (acked){
-                        Map.Entry<Byte, Integer> ack = new AbstractMap.SimpleEntry<>(msg.getSenderID(), msg.getPacketID());
+                        AckPacket ack = new AckPacket(msg.getSenderID(), msg.getOriginalSenderID(), msg.getPacketID());
                         if(acked.contains(ack)){
                             // I don't have to re_send it again
                             // I can remove it from the Set
