@@ -56,10 +56,13 @@ public class PerfectLink extends Link{
             }
         }
         Triplet triplet = new Triplet(msg.getPacketID(), msg.getSenderID(), msg.getOriginalSenderID());
-        if(!delivered.contains(triplet)){
-            delivered.add(triplet);
-            this.deliverMethod.apply(msg);
+        synchronized (this.delivered){
+            if(!delivered.contains(triplet)){
+                delivered.add(triplet);
+                this.deliverMethod.apply(msg);
+            }
         }
+
     }
 
     /**
@@ -70,13 +73,13 @@ public class PerfectLink extends Link{
      */
     public void receiveAck(AckPacket ack){
         // TODO ENABLE AS OPT
-//        synchronized (this.maxSequenceNumberDelivered){
-//            if(this.maxSequenceNumberDelivered.containsKey(ack.getOriginalSenderID())){
-//                if(ack.getPacketID() < this.maxSequenceNumberDelivered.get(ack.getOriginalSenderID())){
-//                    return;
-//                }
-//            }
-//        }
+        synchronized (this.maxSequenceNumberDelivered){
+            if(this.maxSequenceNumberDelivered.containsKey(ack.getOriginalSenderID())){
+                if(ack.getPacketID() < this.maxSequenceNumberDelivered.get(ack.getOriginalSenderID())){
+                    return;
+                }
+            }
+        }
         synchronized (acked){
             acked.add(ack);
         }
@@ -131,7 +134,7 @@ public class PerfectLink extends Link{
                                 msgPkt.getIpAddress(), msgPkt.getPort());
                 ds.send(datagramPacket);
                 toSend.add(msgPkt);
-                Thread.sleep(1);
+//                Thread.sleep(1);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {
@@ -151,7 +154,6 @@ public class PerfectLink extends Link{
      * Remove the packets up until that sequence number and stop allowing them
      */
     public void removeHistory(byte process, int newMaxSequenceNumber){
-        return;
 
         // remove from acked
 //        synchronized (this.acked){
@@ -164,23 +166,23 @@ public class PerfectLink extends Link{
 //            }
 //        }
 
-//        synchronized (this.delivered){
-//            Iterator<Triplet> iterator = this.delivered.iterator();
-//            while (iterator.hasNext()){
-//                Triplet t = iterator.next();
-//                if(t.getOriginalSenderID() == process && t.getPacketID() < newMaxSequenceNumber){
-//                    iterator.remove();
-//                }
-//            }
-//        }
-//
-//
-//
-//        synchronized (this.maxSequenceNumberDelivered){
-//            if(this.maxSequenceNumberDelivered.containsKey(process)){
-//                this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
-//            }
-//        }
+        synchronized (this.delivered){
+            Iterator<Triplet> iterator = this.delivered.iterator();
+            while (iterator.hasNext()){
+                Triplet t = iterator.next();
+                if(t.getOriginalSenderID() == process && t.getPacketID() < newMaxSequenceNumber){
+                    iterator.remove();
+                }
+            }
+        }
+
+
+
+        synchronized (this.maxSequenceNumberDelivered){
+            if(this.maxSequenceNumberDelivered.containsKey(process)){
+                this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
+            }
+        }
 
     }
 
