@@ -17,7 +17,9 @@ public class UniformReliableBroadcast extends Broadcast{
      *      list of processes which had acked it (List<SenderID>)
      */
 
-    private HashMap<Map.Entry<Byte, Integer>, Set<Byte>> acks;
+    // TODO intead of the set of byte I can use a counter (at lest now)
+//    private HashMap<Map.Entry<Byte, Integer>, Set<Byte>> acks;
+    private HashMap<Map.Entry<Byte, Integer>, Byte> acks;
 
     /**
      * Data structure containing the pending messages:
@@ -41,7 +43,6 @@ public class UniformReliableBroadcast extends Broadcast{
         this.bestEffortBroadcast = new BestEffortBroadcast(hosts, hostID, this::deliver);
         this.deliverMethod = deliverMethod;
         this.delivered = new HashSet<>();
-
     }
 
     @Override
@@ -57,12 +58,9 @@ public class UniformReliableBroadcast extends Broadcast{
         }
 
         if(this.acks.containsKey(msgKey)){
-            Set<Byte> list = this.acks.get(msgKey);
-            // add the sender to the list of processes that have received that message
-            list.add(msg.getSenderID());
-            this.acks.put(msgKey, list);
+            this.acks.put(msgKey, (byte) (this.acks.get(msgKey) + 1));
         }else{
-            this.acks.put(msgKey, new HashSet<>());
+            this.acks.put(msgKey, (byte) 1);
         }
 
         // check if the message is in pending
@@ -72,7 +70,6 @@ public class UniformReliableBroadcast extends Broadcast{
             // I need to modify the sender of the message itself to the
             // actual sender
             msg.setSenderID(this.hostID);
-
             // ask to broadcast the new message
             this.bestEffortBroadcast.broadcast(msg);
         }
@@ -114,7 +111,7 @@ public class UniformReliableBroadcast extends Broadcast{
 
     private boolean canDeliver(Map.Entry<Byte, Integer> msgKey){
         // if I have a pending message which has received a majority of acks, then I can deliver it
-        if(pending.contains(msgKey) && acks.getOrDefault(msgKey, new HashSet<>()).size() > (this.hosts.size()/2)){
+        if(pending.contains(msgKey) && acks.getOrDefault(msgKey, (byte) 1) > (this.hosts.size()/2)){
             return true;
         }
         return false;

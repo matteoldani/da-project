@@ -5,13 +5,15 @@ import cs451.broadcast.Broadcast;
 
 import java.util.*;
 
-public class Sender implements Runnable{
+public class Sender{
 
     private byte hostID;
     private int m;
     private List<Integer> broadcasted;
     private Boolean stop;
     private Broadcast broadcast;
+
+    private int toSend;
 
     public Sender(Host host, int m, Broadcast broadcast){
         this.m = m;
@@ -21,32 +23,10 @@ public class Sender implements Runnable{
         this.broadcasted = new ArrayList<>();
 
         this.stop = false;
-    }
 
-    @Override
-    public void run() {
+        this.toSend = 1;
 
-        for(int i=1; i <= m - (m%8); i=i+8){
-            synchronized (this.stop){
-                if(this.stop){
-                    return;
-                }
-            }
-            for(int j=i; j<i+8; j++){
-//                System.out.println("Broadcasting " + j + " from: " + hostID);
-                this.broadcasted.add(j);
-            }
-
-            broadcast.broadcast(i, i+8);
-        }
-
-        if(m%8 == 0){return;}
-        for(int i = m - (m%8) + 1; i<=m; i++){
-//            System.out.println("Broadcasting " + i);
-            this.broadcasted.add(i);
-        }
-        broadcast.broadcast(m - (m%8) + 1, m+1);
-
+        broadcast.getPl().setAskForPackets(this::askForPackets);
     }
 
     public void stopThread(){
@@ -54,10 +34,39 @@ public class Sender implements Runnable{
             this.stop = true;
             this.broadcast.stopThread();
         }
-
     }
 
     public List<Integer> getBroadcasted() {
         return broadcasted;
+    }
+
+    public Boolean askForPackets(Void v){
+
+
+        if(toSend>m){
+            return false;
+        }
+
+        for(int times=0; times<3; times++) {
+
+            // check if i still have 8 packets to send
+            if ((toSend) + 8 <= m) {
+                for (int j = toSend; j < toSend + 8; j++) {
+                    this.broadcasted.add(j);
+                }
+
+                broadcast.broadcast(toSend, toSend + 8);
+                this.toSend += 8;
+            } else {
+                for (int i = toSend; i <= m; i++) {
+                    this.broadcasted.add(i);
+                }
+                broadcast.broadcast(toSend, m + 1);
+                this.toSend = m+1;
+                return true;
+            }
+        }
+
+        return true;
     }
 }

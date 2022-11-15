@@ -37,7 +37,11 @@ public class BestEffortBroadcast extends Broadcast {
                     msg = new Message(i, Utils.fromIntToBytes(i));
                     pkt.addMessage(msg);
                 }
-                this.pl.sendPacket(pkt);
+                if(this.hostID == h.getId()){
+                    this.deliverMethod.apply(pkt);
+                }else{
+                    this.pl.sendPacket(pkt);
+                }
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
@@ -50,8 +54,12 @@ public class BestEffortBroadcast extends Broadcast {
             // TODO do not send to myself, just pretend that I delivered it
             // TODO be sure that the original sender/real sender are correct
             try {
+
                 MessagePacket pkt = new MessagePacket(InetAddress.getByName(h.getIp()),
                         h.getPort(), msg.getPayloadByte());
+                if(h.getId() == msg.getSenderID()){
+                    continue;
+                }
                 this.pl.sendPacket(pkt);
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);

@@ -8,6 +8,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 public class  Main {
@@ -24,13 +25,15 @@ public class  Main {
         //write/flush output file if necessary
         System.out.println("Writing output.");
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outFile))) {
-            for(Integer id: process.getBroadcasted()){
+            List<Integer> processBroadcasted = process.getBroadcasted();
+            for(Integer id: processBroadcasted){
                 String message = "b " + id.toString() + '\n';
                 bufferedWriter.write(message);
             }
 
+            List<Map.Entry<Integer, Byte>> processDelivered = process.getDelivered();
             for (Map.Entry<Integer, Byte> pair:
-                    process.getDelivered()) {
+                    processDelivered) {
                 String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
                 bufferedWriter.write(message);
             }

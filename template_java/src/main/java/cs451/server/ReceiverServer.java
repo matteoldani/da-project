@@ -4,6 +4,7 @@ import cs451.Host;
 import cs451.link.Link;
 import cs451.packet.AckPacket;
 import cs451.packet.MessagePacket;
+import cs451.utils.Utils;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -22,7 +23,7 @@ public class ReceiverServer implements Runnable{
     private List<Host>  hosts;
 
     private Boolean stop;
-
+    private byte[] port;
     private BlockingQueue<DatagramPacket> toHandle;
 
     public ReceiverServer(Link link, int buffSize, int port, List<Host> hosts){
@@ -30,6 +31,7 @@ public class ReceiverServer implements Runnable{
         this.buffSize = buffSize;
         this.stop = false;
         this.hosts = hosts;
+        this.port = Utils.fromIntToBytes(port);
 
         this.toHandle = new LinkedBlockingQueue<>();
 
@@ -51,7 +53,6 @@ public class ReceiverServer implements Runnable{
                 }
             }
             DatagramPacket packet;
-            if(toHandle.isEmpty()){Thread.yield();}
             try {
                 packet = toHandle.take();
             } catch (InterruptedException e) {
@@ -68,17 +69,24 @@ public class ReceiverServer implements Runnable{
 
                 // I need to send an ack
                 // I can build the packet by myself, for performance's sake
-                byte[] ackPayload = new byte[6];
+                byte[] ackPayload = new byte[11];
 
                 // specify the type
                 ackPayload[0] = 1;
                 // specify the sender ID
                 ackPayload[1] = payload[1];
-                // specify the Packet_number
+                // specify the original sender ID
                 ackPayload[2] = payload[2];
+                // specify packet number
                 ackPayload[3] = payload[3];
                 ackPayload[4] = payload[4];
                 ackPayload[5] = payload[5];
+                ackPayload[6] = payload[6];
+                // specify the port to which the message was sent
+                ackPayload[7]  = this.port[0];
+                ackPayload[8]  = this.port[1];
+                ackPayload[9]  = this.port[2];
+                ackPayload[10] = this.port[3];
 
                 packet = new DatagramPacket(ackPayload, ackPayload.length,
                         packet.getAddress(), hosts.get(msg.getSenderID()-1).getPort());

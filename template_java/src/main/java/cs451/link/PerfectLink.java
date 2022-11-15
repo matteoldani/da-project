@@ -13,28 +13,24 @@ import java.util.function.Function;
 public class PerfectLink extends Link{
 
     private BlockingQueue<MessagePacket> toSend;
-    private BlockingQueue<MessagePacket> toResend;
-
-    // TODO check if I can avoid saving the object and just move to a triplet
     private Set<AckPacket> acked;
-
     private Set<Triplet> delivered;
-
     private DatagramSocket ds;
-
     private Boolean stop;
-
     private Function<MessagePacket, Void> deliverMethod;
+    private Function<Void, Boolean> askForPackets;
+    private Map<Byte, Integer> maxSequenceNumberDelivered;
 
     public PerfectLink(Function<MessagePacket, Void> deliverMethod){
 
         // Created the two queues used to handle sending of a message
         this.toSend = new LinkedBlockingQueue<>();
-        this.toResend = new LinkedBlockingQueue<>();
         this.acked = new HashSet<>();
         this.stop = false;
         this.deliverMethod = deliverMethod;
         this.delivered = new HashSet<>();
+        this.askForPackets = null;
+        this.maxSequenceNumberDelivered = new HashMap<>();
 
         // Starting the socket
         try {
@@ -42,11 +38,6 @@ public class PerfectLink extends Link{
         } catch (SocketException e) {
             throw new RuntimeException(e);
         }
-
-        // Start thread sending and resending
-        new Thread(this::send).start();
-        new Thread(this::reSend).start();
-
     }
 
     /**
@@ -55,6 +46,15 @@ public class PerfectLink extends Link{
      * @param msg
      */
     public void deliver(MessagePacket msg){
+        synchronized (this.maxSequenceNumberDelivered){
+            // if I already delivered a bigger message for that original sender, I don't need it
+            // it will be the FIFO asking for this restriction, not the URB
+            if(this.maxSequenceNumberDelivered.containsKey(msg.getOriginalSenderID())){
+                if(msg.getPacketID() < this.maxSequenceNumberDelivered.get(msg.getOriginalSenderID())){
+                    return;
+                }
+            }
+        }
         Triplet triplet = new Triplet(msg.getPacketID(), msg.getSenderID(), msg.getOriginalSenderID());
         if(!delivered.contains(triplet)){
             delivered.add(triplet);
@@ -69,6 +69,14 @@ public class PerfectLink extends Link{
      * @param ack is the packet containing the ack
      */
     public void receiveAck(AckPacket ack){
+        // TODO ENABLE AS OPT
+//        synchronized (this.maxSequenceNumberDelivered){
+//            if(this.maxSequenceNumberDelivered.containsKey(ack.getOriginalSenderID())){
+//                if(ack.getPacketID() < this.maxSequenceNumberDelivered.get(ack.getOriginalSenderID())){
+//                    return;
+//                }
+//            }
+//        }
         synchronized (acked){
             acked.add(ack);
         }
@@ -81,7 +89,6 @@ public class PerfectLink extends Link{
      */
     public void sendPacket(MessagePacket packet){
         toSend.add(packet);
-        // DEBUG System.out.println("Packet add to toSend: " + packet.getPacketID() + " " + packet.getSenderID());
     }
 
     /**
@@ -97,70 +104,40 @@ public class PerfectLink extends Link{
                     return;
                 }
             }
-            if(toSend.isEmpty()){
-                Thread.yield();
-            }else{
-                try {
-                    MessagePacket msgPkt = toSend.take();
-                    toResend.add(msgPkt);
-                    byte[] msgPayload = msgPkt.serializePacket();
-                    DatagramPacket datagramPacket =
-                            new DatagramPacket(msgPayload, msgPayload.length,
-                                    msgPkt.getIpAddress(), msgPkt.getPort());
-                    ds.send(datagramPacket);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-    }
 
-    /**
-     * This method is run inside a thread, it will continuously try to get new
-     * messages from the re_sending queue. If no messages, the Thread will
-     * yield to not slow down the application. Messages are sent with a delay
-     * of 30ms to give priorities to the sending queue.
-     */
-    private void reSend(){
-        while(true){
-            synchronized (this.stop){
-                if(this.stop){
-                    return;
-                }
-            }
-            if(toResend.isEmpty()){
-                Thread.yield();
-            }else{
-                try {
-                    MessagePacket msg = toResend.take();
-                    synchronized (acked){
-                        AckPacket ack = new AckPacket(msg.getSenderID(), msg.getOriginalSenderID(), msg.getPacketID());
-                        if(acked.contains(ack)){
-                            // I don't have to re_send it again
-                            // I can remove it from the Set
-                            acked.remove(ack);
-                            continue;
-                        }
+            try {
+                if(toSend.size() < 8){
+                    if(!this.askForPackets.apply(null)){
+                        Thread.yield();
                     }
-                    byte[] msgPayload = msg.serializePacket();
-                    DatagramPacket datagramPacket =
-                            new DatagramPacket(msgPayload, msgPayload.length,
-                                    msg.getIpAddress(), msg.getPort());
-                    ds.send(datagramPacket);
-                    toResend.add(msg);
-
-                    // I give priorities to the sending thread,
-                    // 30 may need to be tuned
-                    // TODO
-                    // Thread.sleep(30);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
                 }
+                MessagePacket msgPkt = toSend.take();
+                synchronized (acked){
+                    AckPacket ack = new AckPacket(msgPkt.getSenderID(),
+                            msgPkt.getOriginalSenderID(), msgPkt.getPacketID(), msgPkt.getPort());
+
+                    if(acked.contains(ack)){
+                        // I don't have to re_send it again
+                        // I can remove it from the Set
+                        // TODO check if correctness is enforced even with the remove enabledty
+                        acked.remove(ack);
+                        continue;
+                    }
+                }
+//                    toResend.add(msgPkt);
+                byte[] msgPayload = msgPkt.serializePacket();
+                DatagramPacket datagramPacket =
+                        new DatagramPacket(msgPayload, msgPayload.length,
+                                msgPkt.getIpAddress(), msgPkt.getPort());
+                ds.send(datagramPacket);
+                toSend.add(msgPkt);
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
+
         }
     }
 
@@ -170,4 +147,45 @@ public class PerfectLink extends Link{
         }
     }
 
+    /**
+     * Remove the packets up until that sequence number and stop allowing them
+     */
+    public void removeHistory(byte process, int newMaxSequenceNumber){
+        return;
+
+        // remove from acked
+//        synchronized (this.acked){
+//            Iterator<AckPacket> iterator = acked.iterator();
+//            while(iterator.hasNext()) {
+//                AckPacket ack = iterator.next();
+//                if (ack.getOriginalSenderID() == process && ack.getPacketID() < newMaxSequenceNumber) {
+//                    iterator.remove();
+//                }
+//            }
+//        }
+
+//        synchronized (this.delivered){
+//            Iterator<Triplet> iterator = this.delivered.iterator();
+//            while (iterator.hasNext()){
+//                Triplet t = iterator.next();
+//                if(t.getOriginalSenderID() == process && t.getPacketID() < newMaxSequenceNumber){
+//                    iterator.remove();
+//                }
+//            }
+//        }
+//
+//
+//
+//        synchronized (this.maxSequenceNumberDelivered){
+//            if(this.maxSequenceNumberDelivered.containsKey(process)){
+//                this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
+//            }
+//        }
+
+    }
+
+    public void setAskForPackets(Function<Void, Boolean> askForPackets) {
+        this.askForPackets = askForPackets;
+        new Thread(this::send).start();
+    }
 }

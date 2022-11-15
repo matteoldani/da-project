@@ -1,10 +1,8 @@
 package cs451.process;
 
 import cs451.Host;
-import cs451.broadcast.BestEffortBroadcast;
 import cs451.broadcast.Broadcast;
 import cs451.broadcast.FIFOBroadcast;
-import cs451.broadcast.UniformReliableBroadcast;
 import cs451.packet.MessagePacket;
 import cs451.sender.Sender;
 import cs451.server.ReceiverServer;
@@ -39,10 +37,11 @@ public class Process {
         sender = new Sender(hosts.get(hostID-1), nMessages, b);
 
         new Thread(server).start();
-        new Thread(sender).start();
     }
 
     private Void deliver(MessagePacket msg){
+
+        if(this.stop){return null;}
         byte senderID = msg.getOriginalSenderID();
         byte[] payload = msg.getPayloadByte();
 
@@ -70,6 +69,7 @@ public class Process {
     }
 
     public void stopThread(){
+        this.stop = true;
         server.stopThread();
         sender.stopThread();
 
