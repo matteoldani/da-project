@@ -49,23 +49,26 @@ public class Process {
 
         int pos = 8;
         int messageLen = 4;
-        for(int i=0; i<msgs; i++) {
+        synchronized (delivered){
+            for(int i=0; i<msgs; i++) {
 
-            int idMessage = Utils.fromBytesToInt(payload, pos);
-            pos+= messageLen;
-            Map.Entry<Integer, Byte> e =
-                    new AbstractMap.SimpleEntry<>(idMessage,
-                            senderID);
+                int idMessage = Utils.fromBytesToInt(payload, pos);
+                pos+= messageLen;
+                Map.Entry<Integer, Byte> e =
+                        new AbstractMap.SimpleEntry<>(idMessage,
+                                senderID);
+                System.out.println("PROCESS delivering message: " +  e.getValue() + " " + e.getKey());
+                delivered.add(e);
 
-            delivered.add(e);
-
+            }
         }
-
         return null;
     }
 
     public List<Map.Entry<Integer, Byte>> getDelivered(){
-        return this.delivered;
+        synchronized (delivered){
+            return this.delivered;
+        }
     }
 
     public void stopThread(){

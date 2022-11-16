@@ -38,6 +38,7 @@ public class BestEffortBroadcast extends Broadcast {
                     pkt.addMessage(msg);
                 }
                 if(this.hostID == h.getId()){
+                    pkt.serializePacket();
                     this.deliverMethod.apply(pkt);
                 }else{
                     this.pl.sendPacket(pkt);
@@ -58,9 +59,12 @@ public class BestEffortBroadcast extends Broadcast {
                 MessagePacket pkt = new MessagePacket(InetAddress.getByName(h.getIp()),
                         h.getPort(), msg.getPayloadByte());
                 if(h.getId() == msg.getSenderID()){
-                    continue;
+                    // not sending but this needs to be delivered as well
+                    this.deliverMethod.apply(pkt);
+
+                }else {
+                    this.pl.sendPacket(pkt);
                 }
-                this.pl.sendPacket(pkt);
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }

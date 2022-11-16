@@ -35,6 +35,7 @@ public class  Main {
             for (Map.Entry<Integer, Byte> pair:
                     processDelivered) {
                 String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
+                System.out.println(message);
                 bufferedWriter.write(message);
             }
 

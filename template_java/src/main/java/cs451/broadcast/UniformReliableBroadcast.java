@@ -58,8 +58,10 @@ public class UniformReliableBroadcast extends Broadcast{
         }
 
         if(this.acks.containsKey(msgKey)){
+            // increase the number of acks
             this.acks.put(msgKey, (byte) (this.acks.get(msgKey) + 1));
         }else{
+            // set the first ack
             this.acks.put(msgKey, (byte) 1);
         }
 
@@ -111,7 +113,7 @@ public class UniformReliableBroadcast extends Broadcast{
 
     private boolean canDeliver(Map.Entry<Byte, Integer> msgKey){
         // if I have a pending message which has received a majority of acks, then I can deliver it
-        if(pending.contains(msgKey) && acks.getOrDefault(msgKey, (byte) 1) > (this.hosts.size()/2)){
+        if(pending.contains(msgKey) && acks.getOrDefault(msgKey, (byte) 0) > (this.hosts.size()/2)){
             return true;
         }
         return false;
