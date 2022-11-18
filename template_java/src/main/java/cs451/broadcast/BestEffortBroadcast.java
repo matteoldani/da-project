@@ -58,6 +58,7 @@ public class BestEffortBroadcast extends Broadcast {
 
                 MessagePacket pkt = new MessagePacket(InetAddress.getByName(h.getIp()),
                         h.getPort(), msg.getPayloadByte());
+
                 if(h.getId() == msg.getSenderID()){
                     // not sending but this needs to be delivered as well
                     this.deliverMethod.apply(pkt);
@@ -74,6 +75,7 @@ public class BestEffortBroadcast extends Broadcast {
 
     @Override
     public Void deliver(MessagePacket msg){
+        System.out.println("BEB deliver");
         this.deliverMethod.apply(msg);
         return null;
     }

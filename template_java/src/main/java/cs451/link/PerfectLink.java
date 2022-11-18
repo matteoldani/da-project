@@ -101,6 +101,9 @@ public class PerfectLink extends Link{
      */
     private void send(){
 
+        int queueSize = toSend.size();
+        int counter = Integer.MAX_VALUE;
+
         while(true){
             synchronized (this.stop){
                 if(this.stop){
@@ -109,12 +112,18 @@ public class PerfectLink extends Link{
             }
 
             try {
-                if(toSend.size() < 8){
+                System.out.println("Queue length: " + toSend.size());
+                queueSize = toSend.size();
+                if(queueSize < 8 || counter > queueSize){
+                    System.out.println("ASKING FOR MSGS");
+                    counter = 0;
                     if(!this.askForPackets.apply(null)){
                         Thread.yield();
                     }
                 }
+
                 MessagePacket msgPkt = toSend.take();
+                counter++;
                 synchronized (acked){
                     AckPacket ack = new AckPacket(msgPkt.getSenderID(),
                             msgPkt.getOriginalSenderID(), msgPkt.getPacketID(), msgPkt.getPort());
@@ -123,18 +132,19 @@ public class PerfectLink extends Link{
                         // I don't have to re_send it again
                         // I can remove it from the Set
                         // TODO check if correctness is enforced even with the remove enabledty
-                        acked.remove(ack);
+                        // acked.remove(ack);
                         continue;
                     }
                 }
-//                    toResend.add(msgPkt);
+                System.out.println("Sending with PL: " + msgPkt.getOriginalSenderID() + " " + msgPkt.getSenderID() + " " + msgPkt.getPacketID());
+
                 byte[] msgPayload = msgPkt.serializePacket();
                 DatagramPacket datagramPacket =
                         new DatagramPacket(msgPayload, msgPayload.length,
                                 msgPkt.getIpAddress(), msgPkt.getPort());
                 ds.send(datagramPacket);
                 toSend.add(msgPkt);
-//                Thread.sleep(1);
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {

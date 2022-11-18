@@ -41,7 +41,6 @@ public class Process {
 
     private Void deliver(MessagePacket msg){
 
-        if(this.stop){return null;}
         byte senderID = msg.getOriginalSenderID();
         byte[] payload = msg.getPayloadByte();
 
@@ -49,19 +48,19 @@ public class Process {
 
         int pos = 8;
         int messageLen = 4;
-        synchronized (delivered){
-            for(int i=0; i<msgs; i++) {
 
-                int idMessage = Utils.fromBytesToInt(payload, pos);
-                pos+= messageLen;
-                Map.Entry<Integer, Byte> e =
-                        new AbstractMap.SimpleEntry<>(idMessage,
-                                senderID);
-                System.out.println("PROCESS delivering message: " +  e.getValue() + " " + e.getKey());
+        for(int i=0; i<msgs; i++) {
+            int idMessage = Utils.fromBytesToInt(payload, pos);
+            pos+= messageLen;
+            Map.Entry<Integer, Byte> e =
+                    new AbstractMap.SimpleEntry<>(idMessage,
+                            senderID);
+            System.out.println("PROCESS delivering message: " +  e.getValue() + " " + e.getKey());
+            synchronized (delivered) {
                 delivered.add(e);
-
             }
         }
+
         return null;
     }
 
@@ -75,7 +74,6 @@ public class Process {
         this.stop = true;
         server.stopThread();
         sender.stopThread();
-
     }
 
     public List<Integer> getBroadcasted() {

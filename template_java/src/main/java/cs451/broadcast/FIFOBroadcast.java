@@ -88,22 +88,23 @@ public class FIFOBroadcast extends Broadcast{
                         iterator.remove();
                         System.out.println("FIFO delivering: " + pair.getKey() + " " + pair.getValue());
                         this.deliverMethod.apply(toDeliver);
+                        Thread.yield();
 
                         // since I am delivering with FIFO, I can trigger the cleaning of the perfect link
                         // to avoid performance issues, I might consider doing it only N delivery from the FIFO
-                        // TODO
-                        this.processLastDelivery.put(toDeliver.getOriginalSenderID(), toDeliver.getPacketID());
-                        if(this.deliveryDone < 100){
-                            this.deliveryDone++;
-                        }else{
-                            // trigger cleanup
-                            for(Byte process : this.processLastDelivery.keySet()){
-                                this.uniformReliableBroadcast.getPl()
-                                        .removeHistory(process, this.processLastDelivery.get(process));
-                            }
-
-                            this.deliveryDone = 0;
-                        }
+//                        // TODO
+//                        this.processLastDelivery.put(toDeliver.getOriginalSenderID(), toDeliver.getPacketID());
+//                        if(this.deliveryDone < 100){
+//                            this.deliveryDone++;
+//                        }else{
+//                            // trigger cleanup
+//                            for(Byte process : this.processLastDelivery.keySet()){
+//                                this.uniformReliableBroadcast.getPl()
+//                                        .removeHistory(process, this.processLastDelivery.get(process));
+//                            }
+//
+//                            this.deliveryDone = 0;
+//                        }
                     }
                 }
             }
