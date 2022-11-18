@@ -35,6 +35,7 @@ public class MessagePacket extends Packet {
 
         this.payloadByte = payloadByte;
         // TODO add msgs here if needed
+        this.msgs = payloadByte[7];
     }
 
     /**

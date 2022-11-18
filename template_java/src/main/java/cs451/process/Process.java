@@ -17,13 +17,11 @@ public class Process {
     private List<Map.Entry<Integer, Byte>> delivered;
     private List<Host> hosts;
     private byte hostID;
-    private boolean stop;
 
     public Process(List<Host> hosts, byte hostID, int nMessages){
 
         this.hostID = hostID;
         this.hosts = hosts;
-        this.stop = false;
 
         this.delivered = new LinkedList<>();
 
@@ -43,12 +41,15 @@ public class Process {
 
         byte senderID = msg.getOriginalSenderID();
         byte[] payload = msg.getPayloadByte();
-
         int msgs = msg.getMsgs();
 
         int pos = 8;
         int messageLen = 4;
-
+        System.out.println("PROCESS delivering packet: " + msgs + " " + senderID + " " + msg.getPacketID());
+        if(msgs == 0){
+            System.out.println("Packet with 0 messages, printing the payload: ");
+            System.out.println(Arrays.toString(msg.getPayloadByte()));
+        }
         for(int i=0; i<msgs; i++) {
             int idMessage = Utils.fromBytesToInt(payload, pos);
             pos+= messageLen;
@@ -71,7 +72,6 @@ public class Process {
     }
 
     public void stopThread(){
-        this.stop = true;
         server.stopThread();
         sender.stopThread();
     }

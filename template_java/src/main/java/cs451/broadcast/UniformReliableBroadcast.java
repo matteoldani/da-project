@@ -82,7 +82,7 @@ public class UniformReliableBroadcast extends Broadcast{
             // If I can deliver, send the message to the level above
             this.delivered.add(msgKey);
             this.deliverMethod.apply(msg);
-            System.out.println("Delivering from the URB with original sender: " + msg.getOriginalSenderID() + " and pkt id: " + msg.getPacketID());
+//            System.out.println("Delivering from the URB with original sender: " + msg.getOriginalSenderID() + " and pkt id: " + msg.getPacketID());
         }
         return null;
     }

@@ -85,10 +85,10 @@ public class FIFOBroadcast extends Broadcast{
                     if(next[pair.getKey() - 1] == pair.getValue()){
                         next[pair.getKey() -1]++;
                         MessagePacket toDeliver = pending.get(pair);
-                        iterator.remove();
-                        System.out.println("FIFO delivering: " + pair.getKey() + " " + pair.getValue());
+//                        iterator.remove();
+                        System.out.println("FIFO delivering: " + toDeliver.getOriginalSenderID() + " " + toDeliver.getPacketID());
                         this.deliverMethod.apply(toDeliver);
-                        Thread.yield();
+                        iterator.remove();
 
                         // since I am delivering with FIFO, I can trigger the cleaning of the perfect link
                         // to avoid performance issues, I might consider doing it only N delivery from the FIFO

@@ -112,10 +112,10 @@ public class PerfectLink extends Link{
             }
 
             try {
-                System.out.println("Queue length: " + toSend.size());
+//                System.out.println("Queue length: " + toSend.size());
                 queueSize = toSend.size();
                 if(queueSize < 8 || counter > queueSize){
-                    System.out.println("ASKING FOR MSGS");
+//                    System.out.println("ASKING FOR MSGS");
                     counter = 0;
                     if(!this.askForPackets.apply(null)){
                         Thread.yield();
@@ -136,7 +136,7 @@ public class PerfectLink extends Link{
                         continue;
                     }
                 }
-                System.out.println("Sending with PL: " + msgPkt.getOriginalSenderID() + " " + msgPkt.getSenderID() + " " + msgPkt.getPacketID());
+//                System.out.println("Sending with PL: " + msgPkt.getOriginalSenderID() + " " + msgPkt.getSenderID() + " " + msgPkt.getPacketID());
 
                 byte[] msgPayload = msgPkt.serializePacket();
                 DatagramPacket datagramPacket =

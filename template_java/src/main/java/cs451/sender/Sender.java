@@ -42,19 +42,17 @@ public class Sender{
 
     public Boolean askForPackets(Void v){
 
-
         if(toSend>m){
             return false;
         }
 
         for(int times=0; times<3; times++) {
 
-            // check if i still have 8 packets to send
+            // check if I still have 8 packets to send
             if ((toSend) + 8 <= m) {
                 for (int j = toSend; j < toSend + 8; j++) {
                     this.broadcasted.add(j);
                 }
-
                 broadcast.broadcast(toSend, toSend + 8);
                 this.toSend += 8;
             } else {

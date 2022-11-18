@@ -75,7 +75,7 @@ public class BestEffortBroadcast extends Broadcast {
 
     @Override
     public Void deliver(MessagePacket msg){
-        System.out.println("BEB deliver");
+//        System.out.println("BEB deliver");
         this.deliverMethod.apply(msg);
         return null;
     }
