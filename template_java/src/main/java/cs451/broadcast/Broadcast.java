@@ -25,5 +25,6 @@ public abstract class Broadcast {
     public abstract Void deliver(MessagePacket msg);
     public abstract void stopThread();
     public abstract PerfectLink getPl();
+    public abstract void removeHistory(byte process, int newMaxSequenceNumber);
 
 }

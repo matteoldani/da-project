@@ -46,7 +46,7 @@ public class Sender{
             return false;
         }
 
-        for(int times=0; times<3; times++) {
+        for(int times=0; times<2; times++) {
 
             // check if I still have 8 packets to send
             if ((toSend) + 8 <= m) {

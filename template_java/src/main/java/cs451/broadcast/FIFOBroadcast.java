@@ -56,7 +56,6 @@ public class FIFOBroadcast extends Broadcast{
         // if not, add it and then do the check
         synchronized (pending){
             pending.put(msgKey, msg);
-//            System.out.println("Added to pending in the FIFO");
         }
         return null;
     }
@@ -69,6 +68,11 @@ public class FIFOBroadcast extends Broadcast{
     @Override
     public PerfectLink getPl() {
         return this.uniformReliableBroadcast.getPl();
+    }
+
+    @Override
+    public void removeHistory(byte process, int newMaxSequenceNumber) {
+        // do nothing
     }
 
     private void canDeliver(){
@@ -85,26 +89,24 @@ public class FIFOBroadcast extends Broadcast{
                     if(next[pair.getKey() - 1] == pair.getValue()){
                         next[pair.getKey() -1]++;
                         MessagePacket toDeliver = pending.get(pair);
-//                        iterator.remove();
-                        System.out.println("FIFO delivering: " + toDeliver.getOriginalSenderID() + " " + toDeliver.getPacketID());
                         this.deliverMethod.apply(toDeliver);
                         iterator.remove();
 
                         // since I am delivering with FIFO, I can trigger the cleaning of the perfect link
                         // to avoid performance issues, I might consider doing it only N delivery from the FIFO
-//                        // TODO
-//                        this.processLastDelivery.put(toDeliver.getOriginalSenderID(), toDeliver.getPacketID());
-//                        if(this.deliveryDone < 100){
-//                            this.deliveryDone++;
-//                        }else{
-//                            // trigger cleanup
-//                            for(Byte process : this.processLastDelivery.keySet()){
-//                                this.uniformReliableBroadcast.getPl()
-//                                        .removeHistory(process, this.processLastDelivery.get(process));
-//                            }
-//
-//                            this.deliveryDone = 0;
-//                        }
+                        // TODO
+                        this.processLastDelivery.put(toDeliver.getOriginalSenderID(), toDeliver.getPacketID());
+                        if(this.deliveryDone < 100){
+                            this.deliveryDone++;
+                        }else{
+                            // trigger cleanup
+                            System.out.println("Removing history");
+                            for(Byte process : this.processLastDelivery.keySet()){
+                                this.uniformReliableBroadcast.removeHistory(process, this.processLastDelivery.get(process));
+                            }
+
+                            this.deliveryDone = 0;
+                        }
                     }
                 }
             }

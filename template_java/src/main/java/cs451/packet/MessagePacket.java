@@ -34,7 +34,6 @@ public class MessagePacket extends Packet {
                 remoteIp, remotePort, PacketType.MSG);
 
         this.payloadByte = payloadByte;
-        // TODO add msgs here if needed
         this.msgs = payloadByte[7];
     }
 

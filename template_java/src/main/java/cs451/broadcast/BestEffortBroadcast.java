@@ -75,7 +75,6 @@ public class BestEffortBroadcast extends Broadcast {
 
     @Override
     public Void deliver(MessagePacket msg){
-//        System.out.println("BEB deliver");
         this.deliverMethod.apply(msg);
         return null;
     }
@@ -90,6 +89,14 @@ public class BestEffortBroadcast extends Broadcast {
 
     public PerfectLink getPl(){
         return this.pl;
+    }
+
+    @Override
+    public void removeHistory(byte process, int newMaxSequenceNumber) {
+        // do nothing since I have nothing to clean
+
+        // ask the PL to clean itself
+        this.pl.removeHistory(process, newMaxSequenceNumber);
     }
 
     public int getPktID() {

@@ -49,10 +49,8 @@ public class PerfectLink extends Link{
         synchronized (this.maxSequenceNumberDelivered){
             // if I already delivered a bigger message for that original sender, I don't need it
             // it will be the FIFO asking for this restriction, not the URB
-            if(this.maxSequenceNumberDelivered.containsKey(msg.getOriginalSenderID())){
-                if(msg.getPacketID() < this.maxSequenceNumberDelivered.get(msg.getOriginalSenderID())){
-                    return;
-                }
+            if(this.maxSequenceNumberDelivered.getOrDefault(msg.getOriginalSenderID(), -1) > msg.getPacketID()){
+                return;
             }
         }
         Triplet triplet = new Triplet(msg.getPacketID(), msg.getSenderID(), msg.getOriginalSenderID());
@@ -74,7 +72,7 @@ public class PerfectLink extends Link{
     public void receiveAck(AckPacket ack){
         // TODO ENABLE AS OPT
         synchronized (this.maxSequenceNumberDelivered){
-            if(this.maxSequenceNumberDelivered.containsKey(ack.getOriginalSenderID())){
+            if(this.maxSequenceNumberDelivered.getOrDefault(ack.getOriginalSenderID(), -1) > ack.getPacketID()){
                 if(ack.getPacketID() < this.maxSequenceNumberDelivered.get(ack.getOriginalSenderID())){
                     return;
                 }
@@ -144,7 +142,7 @@ public class PerfectLink extends Link{
                                 msgPkt.getIpAddress(), msgPkt.getPort());
                 ds.send(datagramPacket);
                 toSend.add(msgPkt);
-                Thread.sleep(1);
+//                Thread.sleep(127);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {
@@ -166,32 +164,18 @@ public class PerfectLink extends Link{
     public void removeHistory(byte process, int newMaxSequenceNumber){
 
         // remove from acked
-//        synchronized (this.acked){
-//            Iterator<AckPacket> iterator = acked.iterator();
-//            while(iterator.hasNext()) {
-//                AckPacket ack = iterator.next();
-//                if (ack.getOriginalSenderID() == process && ack.getPacketID() < newMaxSequenceNumber) {
-//                    iterator.remove();
-//                }
-//            }
-//        }
-
-        synchronized (this.delivered){
-            Iterator<Triplet> iterator = this.delivered.iterator();
-            while (iterator.hasNext()){
-                Triplet t = iterator.next();
-                if(t.getOriginalSenderID() == process && t.getPacketID() < newMaxSequenceNumber){
-                    iterator.remove();
-                }
-            }
+        synchronized (this.acked){
+            acked.removeIf(ack -> ack.getOriginalSenderID() == process && ack.getPacketID() < newMaxSequenceNumber);
         }
 
+        // remove from delivered
+        synchronized (this.delivered){
+            this.delivered.removeIf(t -> t.getOriginalSenderID() == process && t.getPacketID() < newMaxSequenceNumber);
+        }
 
-
+        // update the newMax for the given process
         synchronized (this.maxSequenceNumberDelivered){
-            if(this.maxSequenceNumberDelivered.containsKey(process)){
-                this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
-            }
+            this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
         }
 
     }

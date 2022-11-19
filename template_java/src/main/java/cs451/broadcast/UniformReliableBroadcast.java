@@ -35,6 +35,11 @@ public class UniformReliableBroadcast extends Broadcast{
      */
     private Set<Map.Entry<Byte, Integer>> delivered;
 
+    /**
+     * This map stores the last delivred value at FIFO level
+     */
+    private Map<Byte, Integer> maxSequenceNumberDelivered;
+
 
     public UniformReliableBroadcast(List<Host> hosts, byte hostID, Function<MessagePacket, Void> deliverMethod){
         super(hosts, hostID);
@@ -43,10 +48,17 @@ public class UniformReliableBroadcast extends Broadcast{
         this.bestEffortBroadcast = new BestEffortBroadcast(hosts, hostID, this::deliver);
         this.deliverMethod = deliverMethod;
         this.delivered = new HashSet<>();
+        this.maxSequenceNumberDelivered = new HashMap<>();
     }
 
     @Override
     public Void deliver(MessagePacket msg){
+
+        // check if this is a relevant message to be delivered
+        if(this.maxSequenceNumberDelivered.getOrDefault(msg.getOriginalSenderID(), -1) > msg.getPacketID()){
+            return null;
+        }
+
         // check if the message (with the original sender) is inside the acks
         // if yes add the current sender to the list
         // if no, create the entry
@@ -76,13 +88,10 @@ public class UniformReliableBroadcast extends Broadcast{
             this.bestEffortBroadcast.broadcast(msg);
         }
 
-        // TODO
-        // I'm doing the check for the delivery here, It may be worth spawning a separate thread
         if(canDeliver(msgKey)){
             // If I can deliver, send the message to the level above
             this.delivered.add(msgKey);
             this.deliverMethod.apply(msg);
-//            System.out.println("Delivering from the URB with original sender: " + msg.getOriginalSenderID() + " and pkt id: " + msg.getPacketID());
         }
         return null;
     }
@@ -117,6 +126,33 @@ public class UniformReliableBroadcast extends Broadcast{
             return true;
         }
         return false;
+    }
+
+    @Override
+    /**
+     * This function is called by the FIFO broadcast after a delivery.
+     * URB can clean its data structures to free memory since we have already
+     * delivered up until this point with the FIFO. In particular pending,
+     * delivered and acks needs to be cleaned
+     *
+     * @param process is the process ID of the process that we want to clean
+     * @param newMaxSequenceNumber is the last delivered message of that process
+     */
+    public void removeHistory(byte process, int newMaxSequenceNumber){
+
+        // update the hashmap
+        this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
+
+        // clean the pending
+        pending.removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+
+        // clean the acks
+        this.acks.keySet().removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+
+        // clean the delivered
+        this.delivered.removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+
+        this.bestEffortBroadcast.removeHistory(process, newMaxSequenceNumber);
     }
 
 }

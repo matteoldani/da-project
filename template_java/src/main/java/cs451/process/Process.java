@@ -45,18 +45,13 @@ public class Process {
 
         int pos = 8;
         int messageLen = 4;
-        System.out.println("PROCESS delivering packet: " + msgs + " " + senderID + " " + msg.getPacketID());
-        if(msgs == 0){
-            System.out.println("Packet with 0 messages, printing the payload: ");
-            System.out.println(Arrays.toString(msg.getPayloadByte()));
-        }
+
         for(int i=0; i<msgs; i++) {
             int idMessage = Utils.fromBytesToInt(payload, pos);
             pos+= messageLen;
             Map.Entry<Integer, Byte> e =
                     new AbstractMap.SimpleEntry<>(idMessage,
                             senderID);
-            System.out.println("PROCESS delivering message: " +  e.getValue() + " " + e.getKey());
             synchronized (delivered) {
                 delivered.add(e);
             }
