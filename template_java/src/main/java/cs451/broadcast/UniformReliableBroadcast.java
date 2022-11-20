@@ -151,33 +151,33 @@ public class UniformReliableBroadcast extends Broadcast{
     public void removeHistory(byte process, int newMaxSequenceNumber){
 
         // update the hashmap
-        System.out.println("update the hashmap");
+        //System.out.println("update the hashmap");
         synchronized (this.maxSequenceNumberDelivered) {
             this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
         }
 
-        System.out.println("Clean the pending");
+        //System.out.println("Clean the pending");
         synchronized (this.pending) {
             // clean the pending
             pending.removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
         }
 
-        System.out.println("Clean the acks");
+        //System.out.println("Clean the acks");
         synchronized (this.acks) {
             // clean the AKCs
             this.acks.keySet().removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
         }
 
-        System.out.println("clean the delivered");
+        //System.out.println("clean the delivered");
         synchronized (this.delivered) {
             // clean the delivered
             this.delivered.removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
         }
 
-        System.out.println("Clean the PL");
+        //System.out.println("Clean the PL");
         this.bestEffortBroadcast.removeHistory(process, newMaxSequenceNumber);
 
-        System.out.println("PL history cleaned: acks -> " + acks.size() + " delivered -> " + delivered.size() + " pending -> " + pending.size());
+        //System.out.println("PL history cleaned: acks -> " + acks.size() + " delivered -> " + delivered.size() + " pending -> " + pending.size());
 
     }
 

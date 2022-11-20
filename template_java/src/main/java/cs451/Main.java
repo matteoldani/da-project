@@ -19,29 +19,35 @@ public class  Main {
     private static void handleSignal() {
 
         // immediately stop network packet processing
+        if(process == null){return;}
         process.stopThread();
 
 
         //write/flush output file if necessary
-        System.out.println("Writing output.");
+        //System.out.println("Writing output.");
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outFile))) {
+
             List<Integer> processBroadcasted = process.getBroadcasted();
-            for(Integer id: processBroadcasted){
-                String message = "b " + id.toString() + '\n';
-                bufferedWriter.write(message);
+            synchronized (processBroadcasted) {
+                for (Integer id : processBroadcasted) {
+                    String message = "b " + id.toString() + '\n';
+                    bufferedWriter.write(message);
+                }
             }
 
             List<Map.Entry<Integer, Byte>> processDelivered = process.getDelivered();
-            for (Map.Entry<Integer, Byte> pair:
-                    processDelivered) {
-                String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
-                bufferedWriter.write(message);
+            synchronized (processDelivered) {
+                for (Map.Entry<Integer, Byte> pair :
+                        processDelivered) {
+                    String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
+                    bufferedWriter.write(message);
+                }
             }
 
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("Output written.");
+        //System.out.println("Output written.");
     }
 
     private static void initSignalHandlers() {
@@ -60,13 +66,8 @@ public class  Main {
         initSignalHandlers();
 
         // example
-        long pid = ProcessHandle.current().pid();
-        System.out.println("My PID: " + pid + "\n");
-        System.out.println("From a new terminal type `kill -SIGINT "
-                + pid + "` or `kill -SIGTERM "
-                + pid + "` to stop processing packets\n");
+        //long pid = ProcessHandle.current().pid();
 
-        System.out.println("My ID: " + parser.myId() + "\n");
 
         outFile = parser.output();
 
@@ -77,6 +78,13 @@ public class  Main {
 
         // After a process finishes broadcasting,
         // it waits forever for the delivery of messages.
+
+//        System.out.println("My PID: " + pid + "\n");
+//        System.out.println("From a new terminal type `kill -SIGINT "
+//                + pid + "` or `kill -SIGTERM "
+//                + pid + "` to stop processing packets\n");
+//
+//        System.out.println("My ID: " + parser.myId() + "\n");
         while (true) {
             // Sleep for 1 hour
             Thread.sleep(60 * 60 * 1000);

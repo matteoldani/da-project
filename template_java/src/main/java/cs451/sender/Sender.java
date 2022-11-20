@@ -46,18 +46,28 @@ public class Sender{
             return false;
         }
 
-        for(int times=0; times<2; times++) {
+        synchronized (this.stop){
+            if(this.stop){
+                return false;
+            }
+        }
+
+        for(int times=0; times<1; times++) {
 
             // check if I still have 8 packets to send
             if ((toSend) + 8 <= m) {
-                for (int j = toSend; j < toSend + 8; j++) {
-                    this.broadcasted.add(j);
+                synchronized (this.broadcasted) {
+                    for (int j = toSend; j < toSend + 8; j++) {
+                        this.broadcasted.add(j);
+                    }
                 }
                 broadcast.broadcast(toSend, toSend + 8);
                 this.toSend += 8;
             } else {
-                for (int i = toSend; i <= m; i++) {
-                    this.broadcasted.add(i);
+                synchronized (this.broadcasted) {
+                    for (int i = toSend; i <= m; i++) {
+                        this.broadcasted.add(i);
+                    }
                 }
                 broadcast.broadcast(toSend, m + 1);
                 this.toSend = m+1;

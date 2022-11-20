@@ -20,10 +20,13 @@ public class Process {
     private Map<Byte, Integer> processLastDelivery;
     private Broadcast broadcast;
 
+    private Boolean stop;
+
     public Process(List<Host> hosts, byte hostID, int nMessages){
 
         this.hostID = hostID;
         this.hosts = hosts;
+        this.stop = false;
         this.delivered = new LinkedList<>();
         this.processLastDelivery = new HashMap<>();
 
@@ -70,6 +73,11 @@ public class Process {
 
     private void removeHistory(){
         while(true){
+            synchronized (this.stop){
+                if(this.stop){
+                    return;
+                }
+            }
             Map<Byte, Integer> clonedMap = new HashMap<>();
             synchronized (this.processLastDelivery) {
                 for (Byte b : this.processLastDelivery.keySet()) {
@@ -77,16 +85,16 @@ public class Process {
                 }
             }
             // trigger cleanup
-            System.out.println("Triggering remove history");
+            //System.out.println("Triggering remove history");
             for (Byte process : clonedMap.keySet()) {
-                System.out.println("Asking the uniform reliable to remvoe history");
+                //System.out.println("Asking the uniform reliable to remvoe history");
                 this.broadcast.removeHistory(process, clonedMap.get(process));
             }
-            System.out.println("Done with remove history");
+            //System.out.println("Done with remove history");
 
 
             try {
-                Thread.sleep(1 * 1000);
+                Thread.sleep(15 * 1000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -94,12 +102,13 @@ public class Process {
     }
 
     public List<Map.Entry<Integer, Byte>> getDelivered(){
-        synchronized (delivered){
             return this.delivered;
-        }
     }
 
     public void stopThread(){
+        synchronized (this.stop){
+            this.stop = true;
+        }
         server.stopThread();
         sender.stopThread();
     }

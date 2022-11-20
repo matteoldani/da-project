@@ -99,7 +99,7 @@ public class PerfectLink extends Link{
      */
     private void send(){
 
-        int queueSize = toSend.size();
+        int queueSize;
         int counter = Integer.MAX_VALUE;
 
         while(true){
@@ -112,7 +112,7 @@ public class PerfectLink extends Link{
             try {
 //                System.out.println("Queue length: " + toSend.size());
                 queueSize = toSend.size();
-                if(queueSize < 8 || counter > queueSize){
+                if(queueSize < 50 || counter > queueSize){
 //                    System.out.println("ASKING FOR MSGS");
                     counter = 0;
                     if(!this.askForPackets.apply(null)){
@@ -178,7 +178,7 @@ public class PerfectLink extends Link{
             this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
         }
 
-        System.out.println("PL history cleaned: acks -> " + acked.size() + " delivered -> " + delivered.size());
+        //System.out.println("PL history cleaned: acks -> " + acked.size() + " delivered -> " + delivered.size());
 
     }
 
