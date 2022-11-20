@@ -19,10 +19,6 @@ public class FIFOBroadcast extends Broadcast{
 
     private Function<MessagePacket, Void> deliverMethod;
 
-    private int deliveryDone;
-
-    private Map<Byte, Integer> processLastDelivery;
-
     public FIFOBroadcast(List<Host> hosts, byte hostID, Function<MessagePacket, Void> deliverMethod) {
         super(hosts, hostID);
 
@@ -33,8 +29,6 @@ public class FIFOBroadcast extends Broadcast{
         Arrays.fill(this.next, 0);
 
         this.deliverMethod = deliverMethod;
-        this.deliveryDone = 0;
-        this.processLastDelivery = new HashMap<>();
 
         new Thread(this::canDeliver).start();
     }
@@ -72,7 +66,7 @@ public class FIFOBroadcast extends Broadcast{
 
     @Override
     public void removeHistory(byte process, int newMaxSequenceNumber) {
-        // do nothing
+        this.uniformReliableBroadcast.removeHistory(process, newMaxSequenceNumber);
     }
 
     private void canDeliver(){
@@ -91,22 +85,6 @@ public class FIFOBroadcast extends Broadcast{
                         MessagePacket toDeliver = pending.get(pair);
                         this.deliverMethod.apply(toDeliver);
                         iterator.remove();
-
-                        // since I am delivering with FIFO, I can trigger the cleaning of the perfect link
-                        // to avoid performance issues, I might consider doing it only N delivery from the FIFO
-                        // TODO
-                        this.processLastDelivery.put(toDeliver.getOriginalSenderID(), toDeliver.getPacketID());
-                        if(this.deliveryDone < 100){
-                            this.deliveryDone++;
-                        }else{
-                            // trigger cleanup
-                            System.out.println("Removing history");
-                            for(Byte process : this.processLastDelivery.keySet()){
-                                this.uniformReliableBroadcast.removeHistory(process, this.processLastDelivery.get(process));
-                            }
-
-                            this.deliveryDone = 0;
-                        }
                     }
                 }
             }

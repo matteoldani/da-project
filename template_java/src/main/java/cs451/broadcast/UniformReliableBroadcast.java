@@ -55,8 +55,10 @@ public class UniformReliableBroadcast extends Broadcast{
     public Void deliver(MessagePacket msg){
 
         // check if this is a relevant message to be delivered
-        if(this.maxSequenceNumberDelivered.getOrDefault(msg.getOriginalSenderID(), -1) > msg.getPacketID()){
-            return null;
+        synchronized (this.maxSequenceNumberDelivered) {
+            if (this.maxSequenceNumberDelivered.getOrDefault(msg.getOriginalSenderID(), -1) > msg.getPacketID()) {
+                return null;
+            }
         }
 
         // check if the message (with the original sender) is inside the acks
@@ -65,33 +67,41 @@ public class UniformReliableBroadcast extends Broadcast{
         Map.Entry<Byte, Integer> msgKey = new AbstractMap.SimpleEntry<>(msg.getOriginalSenderID(), msg.getPacketID());
 
         //if this message has already been delivered, do nothing
-        if(delivered.contains(msgKey)){
-            return null;
+        synchronized (this.delivered){
+            if(delivered.contains(msgKey)){
+                return null;
+            }
         }
 
-        if(this.acks.containsKey(msgKey)){
-            // increase the number of acks
-            this.acks.put(msgKey, (byte) (this.acks.get(msgKey) + 1));
-        }else{
-            // set the first ack
-            this.acks.put(msgKey, (byte) 1);
+        synchronized (this.acks){
+            if(this.acks.containsKey(msgKey)){
+                // increase the number of acks
+                this.acks.put(msgKey, (byte) (this.acks.get(msgKey) + 1));
+            }else{
+                // set the first ack
+                this.acks.put(msgKey, (byte) 1);
+            }
         }
 
         // check if the message is in pending
         // if not, add it and then trigger the broadcast
-        if(!pending.contains(msgKey)){
-            pending.add(msgKey);
-            // I need to modify the sender of the message itself to the
-            // actual sender
-            msg.setSenderID(this.hostID);
-            // ask to broadcast the new message
-            this.bestEffortBroadcast.broadcast(msg);
+        synchronized (this.pending){
+            if(!pending.contains(msgKey)){
+                pending.add(msgKey);
+                // I need to modify the sender of the message itself to the
+                // actual sender
+                msg.setSenderID(this.hostID);
+                // ask to broadcast the new message
+                this.bestEffortBroadcast.broadcast(msg);
+            }
         }
 
-        if(canDeliver(msgKey)){
-            // If I can deliver, send the message to the level above
-            this.delivered.add(msgKey);
-            this.deliverMethod.apply(msg);
+        synchronized (this.delivered){
+            if(canDeliver(msgKey)){
+                // If I can deliver, send the message to the level above
+                this.delivered.add(msgKey);
+                this.deliverMethod.apply(msg);
+            }
         }
         return null;
     }
@@ -141,18 +151,34 @@ public class UniformReliableBroadcast extends Broadcast{
     public void removeHistory(byte process, int newMaxSequenceNumber){
 
         // update the hashmap
-        this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
+        System.out.println("update the hashmap");
+        synchronized (this.maxSequenceNumberDelivered) {
+            this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
+        }
 
-        // clean the pending
-        pending.removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+        System.out.println("Clean the pending");
+        synchronized (this.pending) {
+            // clean the pending
+            pending.removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+        }
 
-        // clean the acks
-        this.acks.keySet().removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+        System.out.println("Clean the acks");
+        synchronized (this.acks) {
+            // clean the AKCs
+            this.acks.keySet().removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+        }
 
-        // clean the delivered
-        this.delivered.removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+        System.out.println("clean the delivered");
+        synchronized (this.delivered) {
+            // clean the delivered
+            this.delivered.removeIf(pair -> pair.getKey() == process && pair.getValue() < newMaxSequenceNumber);
+        }
 
+        System.out.println("Clean the PL");
         this.bestEffortBroadcast.removeHistory(process, newMaxSequenceNumber);
+
+        System.out.println("PL history cleaned: acks -> " + acks.size() + " delivered -> " + delivered.size() + " pending -> " + pending.size());
+
     }
 
 }

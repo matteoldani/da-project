@@ -178,6 +178,8 @@ public class PerfectLink extends Link{
             this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
         }
 
+        System.out.println("PL history cleaned: acks -> " + acked.size() + " delivered -> " + delivered.size());
+
     }
 
     public void setAskForPackets(Function<Void, Boolean> askForPackets) {

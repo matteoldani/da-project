@@ -15,7 +15,7 @@ def generatePerfectLinksConfig(directory, processes, messages):
         for i in range(1, processes + 1):
             hosts.write("{} localhost {}\n".format(i, PROCESSES_BASE_IP+i))
     with open(configfile, 'w') as config:
-        config.write("{} 1\n".format(messages))
+        config.write("{}\n".format(messages))
     return (hostsfile, configfile)
 
 def startProcesses(processes, runscript, hostsFilePath, configFilePath, outputDir):
@@ -70,7 +70,7 @@ def main(processes, messages, runscript, logsDir):
         for (logicalPID, procHandle) in procs:
             print("Process with logicalPID {} has PID {}".format(logicalPID, procHandle.pid))
 
-        time.sleep(7)
+        time.sleep(60)
 
     finally:
         if procs is not None:
