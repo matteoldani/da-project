@@ -115,7 +115,9 @@ public class UniformReliableBroadcast extends Broadcast{
         // Add the packetID to the pending
         // I may want to trigger the check for the delivery, however I don't
         // think it will exist a situation in which I should deliver now
-        pending.add(new AbstractMap.SimpleEntry<>(this.hostID, pktID));
+        synchronized (this.pending) {
+            pending.add(new AbstractMap.SimpleEntry<>(this.hostID, pktID));
+        }
         bestEffortBroadcast.broadcast(mStart, mEnd);
 
     }
