@@ -12,10 +12,10 @@ public class Sender{
     private List<Integer> broadcasted;
     private Boolean stop;
     private Broadcast broadcast;
-
+    private byte numberOfHots;
     private int toSend;
 
-    public Sender(Host host, int m, Broadcast broadcast){
+    public Sender(Host host, int m, Broadcast broadcast, byte numberOfHots){
         this.m = m;
         this.hostID = (byte)host.getId();
 
@@ -23,7 +23,7 @@ public class Sender{
         this.broadcasted = new ArrayList<>();
 
         this.stop = false;
-
+        this.numberOfHots = numberOfHots;
         this.toSend = 1;
 
         broadcast.getPl().setAskForPackets(this::askForPackets);
@@ -52,7 +52,7 @@ public class Sender{
             }
         }
 
-        for(int times=0; times<1; times++) {
+        for(int times=0; times<(128*128)/(numberOfHots*numberOfHots); times++) {
 
             // check if I still have 8 packets to send
             if ((toSend) + 8 <= m) {

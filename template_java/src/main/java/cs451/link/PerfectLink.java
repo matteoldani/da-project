@@ -12,7 +12,7 @@ import java.util.function.Function;
 
 public class PerfectLink extends Link{
 
-    private PriorityBlockingQueue toSend;
+    private PriorityBlockingQueue<Map.Entry<MessagePacket, Integer>> toSend;
     private Set<AckPacket> acked;
     private Set<Triplet> delivered;
     private DatagramSocket ds;
@@ -113,9 +113,6 @@ public class PerfectLink extends Link{
      */
     private void send(){
 
-        int queueSize;
-        int counter = Integer.MAX_VALUE;
-
         while(true){
             synchronized (this.stop){
                 if(this.stop){
@@ -139,30 +136,26 @@ public class PerfectLink extends Link{
 //                        Thread.yield();
 //                    }
 //                }
-                if(toSend.size() < 50){
+                //System.out.println(toSend.size());
+                if(toSend.size() < 300){
                     this.askForPackets.apply(null);
                 }
-                Map.Entry<MessagePacket, Integer> toSendPair = (Map.Entry<MessagePacket, Integer>) toSend.take();
+                Map.Entry<MessagePacket, Integer> toSendPair = toSend.take();
                 MessagePacket msgPkt = toSendPair.getKey();
                 // TODO optimize
-                if(toSendPair.getValue() > 1024){
-                    if(!this.askForPackets.apply(null)){
-                        Thread.yield();
-                    }
-                }
+//                if(toSendPair.getValue() > 1024){
+//                    if(!this.askForPackets.apply(null)){
+//                        Thread.yield();
+//                    }
+//                }
                 synchronized (acked){
                     AckPacket ack = new AckPacket(msgPkt.getSenderID(),
                             msgPkt.getOriginalSenderID(), msgPkt.getPacketID(), msgPkt.getPort());
 
                     if(acked.contains(ack)){
-                        // I don't have to re_send it again
-                        // I can remove it from the Set
-                        // TODO check if correctness is enforced even with the remove enabledty
-                        // acked.remove(ack);
                         continue;
                     }
                 }
-//                System.out.println("Sending with PL: " + msgPkt.getOriginalSenderID() + " " + msgPkt.getSenderID() + " " + msgPkt.getPacketID());
 
                 byte[] msgPayload = msgPkt.serializePacket();
                 DatagramPacket datagramPacket =
@@ -171,7 +164,6 @@ public class PerfectLink extends Link{
                 ds.send(datagramPacket);
                 toSendPair.setValue(toSendPair.getValue() * 2);
                 toSend.add(toSendPair);
-//                Thread.sleep(127);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {

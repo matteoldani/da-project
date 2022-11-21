@@ -7,7 +7,6 @@ import cs451.packet.MessagePacket;
 import cs451.sender.Sender;
 import cs451.server.ReceiverServer;
 import cs451.utils.Utils;
-
 import java.util.*;
 
 public class Process {
@@ -40,7 +39,7 @@ public class Process {
         new Thread(server).start();
         new Thread(this::removeHistory).start();
 
-        sender = new Sender(hosts.get(hostID-1), nMessages, broadcast);
+        sender = new Sender(hosts.get(hostID-1), nMessages, broadcast, (byte)hosts.size());
     }
 
     private Void deliver(MessagePacket msg){
@@ -94,7 +93,7 @@ public class Process {
 
 
             try {
-                Thread.sleep(15 * 1000);
+                Thread.sleep(30 * 1000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
