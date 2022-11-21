@@ -30,7 +30,7 @@ public class  Main {
             List<Integer> processBroadcasted = process.getBroadcasted();
             synchronized (processBroadcasted) {
                 for (Integer id : processBroadcasted) {
-                    String message = "b " + id.toString() + '\n';
+                    String message = String.format("b %d\n", id);
                     bufferedWriter.write(message);
                 }
             }
@@ -39,7 +39,8 @@ public class  Main {
             synchronized (processDelivered) {
                 for (Map.Entry<Integer, Byte> pair :
                         processDelivered) {
-                    String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
+                    // String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
+                    String message = String.format("d %d %d\n", pair.getValue(), pair.getKey());
                     bufferedWriter.write(message);
                 }
             }

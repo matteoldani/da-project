@@ -12,7 +12,7 @@ import java.util.function.Function;
 
 public class PerfectLink extends Link{
 
-    private BlockingQueue<MessagePacket> toSend;
+    private PriorityBlockingQueue toSend;
     private Set<AckPacket> acked;
     private Set<Triplet> delivered;
     private DatagramSocket ds;
@@ -21,16 +21,27 @@ public class PerfectLink extends Link{
     private Function<Void, Boolean> askForPackets;
     private Map<Byte, Integer> maxSequenceNumberDelivered;
 
+    private Integer msgAcked;
+
+    private class MyComp implements Comparator<Map.Entry<MessagePacket, Integer>>{
+        @Override
+        public int compare(Map.Entry<MessagePacket, Integer> messagePacketIntegerEntry, Map.Entry<MessagePacket, Integer> t1) {
+            return Integer.compare(messagePacketIntegerEntry.getValue(), t1.getValue());
+        }
+    }
+
     public PerfectLink(Function<MessagePacket, Void> deliverMethod){
 
         // Created the two queues used to handle sending of a message
-        this.toSend = new LinkedBlockingQueue<>();
+        MyComp myComparator = new MyComp();
+        this.toSend = new PriorityBlockingQueue<>(1000, myComparator);
         this.acked = new HashSet<>();
         this.stop = false;
         this.deliverMethod = deliverMethod;
         this.delivered = new HashSet<>();
         this.askForPackets = null;
         this.maxSequenceNumberDelivered = new HashMap<>();
+        this.msgAcked = 0;
 
         // Starting the socket
         try {
@@ -70,7 +81,6 @@ public class PerfectLink extends Link{
      * @param ack is the packet containing the ack
      */
     public void receiveAck(AckPacket ack){
-        // TODO ENABLE AS OPT
         synchronized (this.maxSequenceNumberDelivered){
             if(this.maxSequenceNumberDelivered.getOrDefault(ack.getOriginalSenderID(), -1) > ack.getPacketID()){
                 if(ack.getPacketID() < this.maxSequenceNumberDelivered.get(ack.getOriginalSenderID())){
@@ -81,6 +91,10 @@ public class PerfectLink extends Link{
         synchronized (acked){
             acked.add(ack);
         }
+
+        synchronized (this.msgAcked){
+            this.msgAcked++;
+        }
     }
 
     /**
@@ -89,7 +103,7 @@ public class PerfectLink extends Link{
      * @param packet is the packet to be sent
      */
     public void sendPacket(MessagePacket packet){
-        toSend.add(packet);
+        toSend.add(new AbstractMap.SimpleEntry<>(packet, 1));
     }
 
     /**
@@ -111,17 +125,31 @@ public class PerfectLink extends Link{
 
             try {
 //                System.out.println("Queue length: " + toSend.size());
-                queueSize = toSend.size();
-                if(queueSize < 50 || counter > queueSize){
-//                    System.out.println("ASKING FOR MSGS");
-                    counter = 0;
+//                queueSize = toSend.size();
+//                synchronized (this.msgAcked){
+//                    if(this.msgAcked > 8) {
+//                        this.msgAcked = 0;
+//                        this.askForPackets.apply(null);
+//                    }
+//                }
+//                if(queueSize < 50){
+////                    System.out.println("ASKING FOR MSGS");
+//
+//                    if(!this.askForPackets.apply(null)){
+//                        Thread.yield();
+//                    }
+//                }
+                if(toSend.size() < 50){
+                    this.askForPackets.apply(null);
+                }
+                Map.Entry<MessagePacket, Integer> toSendPair = (Map.Entry<MessagePacket, Integer>) toSend.take();
+                MessagePacket msgPkt = toSendPair.getKey();
+                // TODO optimize
+                if(toSendPair.getValue() > 1024){
                     if(!this.askForPackets.apply(null)){
                         Thread.yield();
                     }
                 }
-
-                MessagePacket msgPkt = toSend.take();
-                counter++;
                 synchronized (acked){
                     AckPacket ack = new AckPacket(msgPkt.getSenderID(),
                             msgPkt.getOriginalSenderID(), msgPkt.getPacketID(), msgPkt.getPort());
@@ -141,7 +169,8 @@ public class PerfectLink extends Link{
                         new DatagramPacket(msgPayload, msgPayload.length,
                                 msgPkt.getIpAddress(), msgPkt.getPort());
                 ds.send(datagramPacket);
-                toSend.add(msgPkt);
+                toSendPair.setValue(toSendPair.getValue() * 2);
+                toSend.add(toSendPair);
 //                Thread.sleep(127);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
