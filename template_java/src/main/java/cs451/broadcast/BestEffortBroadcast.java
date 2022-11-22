@@ -19,7 +19,7 @@ public class BestEffortBroadcast extends Broadcast {
 
     public BestEffortBroadcast(List<Host> hosts, byte hostID, Function<MessagePacket, Void> deliverMethod){
         super(hosts, hostID);
-        this.pl = new PerfectLink(this::deliver);
+        this.pl = new PerfectLink(hosts, hostID, this::deliver);
         this.pktID = 0;
         this.stopThread = false;
         this.deliverMethod = deliverMethod;

@@ -5,6 +5,7 @@ import cs451.link.PerfectLink;
 import cs451.packet.MessagePacket;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public class FIFOBroadcast extends Broadcast{
@@ -15,14 +16,14 @@ public class FIFOBroadcast extends Broadcast{
      * Contains the next sequence number for every process
      */
     private int[] next;
-    private HashMap<Map.Entry<Byte, Integer>, MessagePacket> pending;
+    private ConcurrentHashMap<Map.Entry<Byte, Integer>, MessagePacket> pending;
 
     private Function<MessagePacket, Void> deliverMethod;
 
     public FIFOBroadcast(List<Host> hosts, byte hostID, Function<MessagePacket, Void> deliverMethod) {
         super(hosts, hostID);
 
-        this.pending = new HashMap<>();
+        this.pending = new ConcurrentHashMap<>();
         this.uniformReliableBroadcast = new UniformReliableBroadcast(hosts, hostID, this::deliver);
 
         this.next = new int[hosts.size()];
@@ -48,9 +49,9 @@ public class FIFOBroadcast extends Broadcast{
 
         // check if the message is in pending
         // if not, add it and then do the check
-        synchronized (pending){
-            pending.put(msgKey, msg);
-        }
+
+        pending.put(msgKey, msg);
+
         return null;
     }
 
@@ -71,23 +72,23 @@ public class FIFOBroadcast extends Broadcast{
 
     private void canDeliver(){
         while(true){
-            synchronized (pending){
-                if(pending.size() == 0){
-                    Thread.yield();
-                    continue;
-                }
 
-                Iterator<Map.Entry<Byte, Integer>> iterator = pending.keySet().iterator();
-                while(iterator.hasNext()){
-                    Map.Entry<Byte, Integer> pair = iterator.next();
-                    if(next[pair.getKey() - 1] == pair.getValue()){
-                        next[pair.getKey() -1]++;
-                        MessagePacket toDeliver = pending.get(pair);
-                        this.deliverMethod.apply(toDeliver);
-                        iterator.remove();
-                    }
+            if(pending.size() == 0){
+                Thread.yield();
+                continue;
+            }
+
+            Iterator<Map.Entry<Byte, Integer>> iterator = pending.keySet().iterator();
+            while(iterator.hasNext()){
+                Map.Entry<Byte, Integer> pair = iterator.next();
+                if(next[pair.getKey() - 1] == pair.getValue()){
+                    next[pair.getKey() -1]++;
+                    MessagePacket toDeliver = pending.get(pair);
+                    this.deliverMethod.apply(toDeliver);
+                    iterator.remove();
                 }
             }
+
         }
     }
 }

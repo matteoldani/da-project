@@ -52,7 +52,7 @@ public class Sender{
             }
         }
 
-        for(int times=0; times<(128*128)/(numberOfHots*numberOfHots); times++) {
+        for(int times=0; times<(128*128)/(numberOfHots*numberOfHots) + 2; times++) {
 
             // check if I still have 8 packets to send
             if ((toSend) + 8 <= m) {
