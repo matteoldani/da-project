@@ -20,7 +20,7 @@ public class PerfectLink extends Link{
     private Boolean stop;
     private Function<MessagePacket, Void> deliverMethod;
     private Function<Void, Boolean> askForPackets;
-    private Map<Byte, Integer> maxSequenceNumberDelivered;
+    private ConcurrentHashMap<Byte, Integer> maxSequenceNumberDelivered;
     private List<Host> hosts;
     private Map<Integer, Byte> portToHost;
 
@@ -40,7 +40,7 @@ public class PerfectLink extends Link{
         this.deliverMethod = deliverMethod;
         this.delivered = new HashSet<>();
         this.askForPackets = null;
-        this.maxSequenceNumberDelivered = new HashMap<>();
+        this.maxSequenceNumberDelivered = new ConcurrentHashMap<>();
 
         // Starting the socket
         try {
@@ -67,13 +67,13 @@ public class PerfectLink extends Link{
      * @param msg
      */
     public void deliver(MessagePacket msg){
-        synchronized (this.maxSequenceNumberDelivered){
-            // if I already delivered a bigger message for that original sender, I don't need it
-            // it will be the FIFO asking for this restriction, not the URB
-            if(this.maxSequenceNumberDelivered.getOrDefault(msg.getOriginalSenderID(), -1) > msg.getPacketID()){
-                return;
-            }
+
+        // if I already delivered a bigger message for that original sender, I don't need it
+        // it will be the FIFO asking for this restriction, not the URB
+        if(this.maxSequenceNumberDelivered.getOrDefault(msg.getOriginalSenderID(), -1) > msg.getPacketID()){
+            return;
         }
+
         Triplet triplet = new Triplet(msg.getPacketID(), msg.getSenderID(), msg.getOriginalSenderID());
         synchronized (this.delivered){
             if(!delivered.contains(triplet)){
@@ -91,13 +91,13 @@ public class PerfectLink extends Link{
      * @param ack is the packet containing the ack
      */
     public void receiveAck(AckPacket ack){
-        synchronized (this.maxSequenceNumberDelivered){
-            if(this.maxSequenceNumberDelivered.getOrDefault(ack.getOriginalSenderID(), -1) > ack.getPacketID()){
-                if(ack.getPacketID() < this.maxSequenceNumberDelivered.get(ack.getOriginalSenderID())){
-                    return;
-                }
-            }
-        }
+//        if(this.maxSequenceNumberDelivered.getOrDefault(ack.getOriginalSenderID(), -1) > ack.getPacketID()){
+//            if(ack.getPacketID() < this.maxSequenceNumberDelivered.get(ack.getOriginalSenderID())){
+////                System.out.println("Cannot deliver anymoreee");
+//                return;
+//            }
+//        }
+//        System.out.println("ACKED!!");
         synchronized (acked){
             acked.add(ack);
         }
@@ -185,9 +185,8 @@ public class PerfectLink extends Link{
         }
 
         // update the newMax for the given process
-        synchronized (this.maxSequenceNumberDelivered){
-            this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
-        }
+        this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
+
 
         //System.out.println("PL history cleaned: acks -> " + acked.size() + " delivered -> " + delivered.size());
 

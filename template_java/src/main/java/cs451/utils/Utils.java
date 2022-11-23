@@ -4,15 +4,21 @@ public abstract class Utils {
 
 
     public static int fromBytesToInt(byte[] payload, int start){
-        int value = 0;
+        int value1 = 0;
+        int value2 = 0;
+        int value3 = 0;
+        int value4 = 0;
+
         int shift = 0;
 
-        for(int i=start+3; i>=start; i--){
-            value += ((int)(payload[i] & 0xFF)) << shift;
-            shift += 8;
-        }
 
-        return value;
+        value1 += ((int)(payload[start + 3] & 0xFF)) << shift;
+        value2 += ((int)(payload[start + 2] & 0xFF)) << (shift + 8);
+        value3 += ((int)(payload[start + 1] & 0xFF)) << (shift + 16);
+        value4 += ((int)(payload[start] & 0xFF)) << (shift + 24);
+
+
+        return value1+value2+value3+value4;
     }
 
     public static byte[] fromIntToBytes(int value){

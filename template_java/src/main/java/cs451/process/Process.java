@@ -91,7 +91,7 @@ public class Process {
             }
             //System.out.println("Done with remove history");
 
-
+            System.gc();
             try {
                 Thread.sleep(30 * 1000);
             } catch (InterruptedException e) {

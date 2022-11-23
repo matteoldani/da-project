@@ -17,6 +17,7 @@ public class Sender{
 
     public Sender(Host host, int m, Broadcast broadcast, byte numberOfHots){
         this.m = m;
+        System.out.println("M: " + m);
         this.hostID = (byte)host.getId();
 
         this.broadcast = broadcast;
@@ -64,6 +65,9 @@ public class Sender{
                 broadcast.broadcast(toSend, toSend + 8);
                 this.toSend += 8;
             } else {
+                if(toSend>m){
+                    return false;
+                }
                 synchronized (this.broadcasted) {
                     for (int i = toSend; i <= m; i++) {
                         this.broadcasted.add(i);
