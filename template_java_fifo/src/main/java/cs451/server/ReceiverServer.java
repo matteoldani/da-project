@@ -63,7 +63,7 @@ public class ReceiverServer implements Runnable{
 
             // check the type of packet
             if(payload[0] == 0){
-                // ProposalMessage Type
+                // Message Type
                 MessagePacket msg = new MessagePacket(payload);
                 link.deliver(msg);
 

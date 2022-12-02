@@ -1,7 +1,7 @@
 package cs451.broadcast;
 
 import cs451.Host;
-import cs451.message.ProposalMessage;
+import cs451.Message;
 import cs451.link.PerfectLink;
 import cs451.packet.MessagePacket;
 import cs451.utils.Utils;
@@ -30,11 +30,11 @@ public class BestEffortBroadcast extends Broadcast {
             // TODO do not send to myself, just pretend that I delivered it
             try {
                 MessagePacket pkt = new MessagePacket(this.hostID, this.hostID, this.pktID, InetAddress.getByName(h.getIp()), h.getPort());
-                ProposalMessage msg;
+                Message msg;
 
                 // I should be sure that the number of messages fits the packet
                 for(int i=mStart; i<mEnd; i++){
-                    msg = new ProposalMessage(i, Utils.fromIntToBytes(i));
+                    msg = new Message(i, Utils.fromIntToBytes(i));
                     pkt.addMessage(msg);
                 }
                 if(this.hostID == h.getId()){

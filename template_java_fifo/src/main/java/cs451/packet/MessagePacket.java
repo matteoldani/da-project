@@ -1,43 +1,40 @@
 package cs451.packet;
 
-import cs451.message.ProposalMessage;
+import cs451.Message;
 import cs451.utils.Utils;
-import static cs451.packet.MessagePacketConstants.*;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-
-//import static cs451.packet.MessagePacketConstants.SENDER_ID;
 
 public class MessagePacket extends Packet {
 
     private byte msgs;
     private ArrayList<Byte> payload;
-    private int remainingSpace;
+
     private byte [] payloadByte;
 
     /**
      * constructor to be used when creating a packet to be sent
      * @param senderID the id of the sender of the packet
      */
-    public MessagePacket(byte senderID, int packetID,
-                         InetAddress remoteIp, int remotePort){
-        super(senderID, packetID, remoteIp,
+    public MessagePacket(byte senderID, byte originalSenderID,
+                         int packetID, InetAddress remoteIp,
+                         int remotePort){
+        super(senderID, originalSenderID, packetID, remoteIp,
                 remotePort, PacketType.MSG);
         this.payload = new ArrayList<>();
 
         // MAX number of messages allowed in one packet
         this.msgs = 0;
-        this.remainingSpace = (1<<16);
         this.payloadByte = null;
     }
 
     public MessagePacket(InetAddress remoteIp, int remotePort, byte[] payloadByte){
-        super(payloadByte[SENDER_ID], Utils.fromBytesToInt(payloadByte, PACKET_ID),
+        super(payloadByte[1], payloadByte[2], Utils.fromBytesToInt(payloadByte, 3),
                 remoteIp, remotePort, PacketType.MSG);
 
         this.payloadByte = payloadByte;
-        this.msgs = payloadByte[MSGS];
+        this.msgs = payloadByte[7];
     }
 
     /**
@@ -49,10 +46,11 @@ public class MessagePacket extends Packet {
 
         // I need to parse the message to deliver it (?)
         this.type = PacketType.MSG;
-        this.senderID = payload[SENDER_ID];
-        this.packetID = Utils.fromBytesToInt(payload, PACKET_ID);
+        this.senderID = payload[1];
+        this.originalSenderID = payload[2];
+        this.packetID = Utils.fromBytesToInt(payload, 3);
 
-        this.msgs = payload[MSGS];
+        this.msgs = payload[7];
 
         this.payloadByte = payload;
     }
@@ -62,24 +60,19 @@ public class MessagePacket extends Packet {
      * @param msg is the message to be added
      * @return true if the message can be added, false if there is no space
      */
-    public boolean addMessage(ProposalMessage msg){
+    public boolean addMessage(Message msg){
 
         if(this.msgs == 8){
             return false;
         }
 
-        Byte[] payload = msg.getPayload();
-
-        if(payload.length + MSGS + 1 > this.remainingSpace){
-            return false;
-        }
+        byte[] payload = msg.getPayload();
 
         //adding the payload
         for(int i=0; i<msg.getPayload().length; i++){
             this.payload.add(payload[i]);
         }
 
-        this.remainingSpace -= payload.length;
         this.msgs += 1;
 
         return true;
@@ -88,7 +81,7 @@ public class MessagePacket extends Packet {
     /**
      * serializing the packet to an array of bytes to be sent over UDP
      *
-     * ProposalMessage structure:
+     * Message structure:
      *  - Type: byte
      *  - Sender ID: byte
      *  - Packet ID: int -> 4 byte
@@ -109,18 +102,19 @@ public class MessagePacket extends Packet {
         byte[] payload = new byte[this.payload.size()+8];
 
         // adding the type to the payload
-        payload[TYPE] = (byte) this.type.ordinal();
+        payload[0] = (byte) this.type.ordinal();
         // adding sender ID to the payload
-        payload[SENDER_ID] = this.senderID;
+        payload[1] = this.senderID;
+        payload[2] = this.originalSenderID;
         // adding packet_ID to payload
         byte[] packetIDTobyte = Utils.fromIntToBytes(packetID);
         for(int i=0; i<packetIDTobyte.length;i++){
-            payload[PACKET_ID+i] = packetIDTobyte[i];
+            payload[3+i] = packetIDTobyte[i];
         }
-        payload[MSGS] = this.msgs;
+        payload[7] = this.msgs;
 
         for(int i=0; i<this.payload.size(); i++){
-            payload[i+MSGS+1] = this.payload.get(i);
+            payload[i+8] = this.payload.get(i);
         }
         this.payloadByte = payload;
         return payload;
@@ -139,7 +133,7 @@ public class MessagePacket extends Packet {
         // I need to change both the param and the payload byte if it;s defined
         this.senderID = senderID;
         if(this.payloadByte != null){
-            this.payloadByte[SENDER_ID] = senderID;
+            this.payloadByte[1] = senderID;
         }
     }
 }

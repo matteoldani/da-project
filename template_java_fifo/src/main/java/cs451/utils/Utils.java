@@ -33,21 +33,4 @@ public abstract class Utils {
         return payload;
     }
 
-    public static int fromBytesToInt(Byte[] payload, int start) {
-        int value1 = 0;
-        int value2 = 0;
-        int value3 = 0;
-        int value4 = 0;
-
-        int shift = 0;
-
-
-        value1 += ((int)(payload[start + 3] & 0xFF)) << shift;
-        value2 += ((int)(payload[start + 2] & 0xFF)) << (shift + 8);
-        value3 += ((int)(payload[start + 1] & 0xFF)) << (shift + 16);
-        value4 += ((int)(payload[start] & 0xFF)) << (shift + 24);
-
-
-        return value1+value2+value3+value4;
-    }
 }

@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class  Main {
 
@@ -28,16 +27,21 @@ public class  Main {
         //System.out.println("Writing output.");
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outFile))) {
 
-            Map<Integer, Set<Integer>> processDecided = process.getDecided();
-            synchronized (processDecided) {
-                for(int i=0; i<processDecided.size(); i++){
-                    StringBuilder stringBuilder = new StringBuilder();
-                    for(Integer n: processDecided.get(i)){
-                        stringBuilder.append(n);
-                        stringBuilder.append(' ');
-                    }
-                    stringBuilder.append('\n');
-                    bufferedWriter.write(stringBuilder.toString());
+            List<Integer> processBroadcasted = process.getBroadcasted();
+            synchronized (processBroadcasted) {
+                for (Integer id : processBroadcasted) {
+                    String message = String.format("b %d\n", id);
+                    bufferedWriter.write(message);
+                }
+            }
+
+            List<Map.Entry<Integer, Byte>> processDelivered = process.getDelivered();
+            synchronized (processDelivered) {
+                for (Map.Entry<Integer, Byte> pair :
+                        processDelivered) {
+                    // String message = "d " + pair.getValue().toString() + " " + pair.getKey().toString() + '\n';
+                    String message = String.format("d %d %d\n", pair.getValue(), pair.getKey());
+                    bufferedWriter.write(message);
                 }
             }
 
@@ -62,14 +66,26 @@ public class  Main {
 
         initSignalHandlers();
 
+        // example
+        //long pid = ProcessHandle.current().pid();
+
+
         outFile = parser.output();
 
         ConfigParser configParser = new ConfigParser();
         configParser.populate(parser.config());
 
-        process = new Process(parser.hosts(), (byte)parser.myId(), configParser.getNumberOfProposal(),
-                configParser.getMaxElementInProposal(), configParser.getMaxDistinctElement(), configParser.getProposals());
+        process = new Process(parser.hosts(), (byte)parser.myId(), configParser.getnumberOfMsgs());
 
+        // After a process finishes broadcasting,
+        // it waits forever for the delivery of messages.
+
+//        System.out.println("My PID: " + pid + "\n");
+//        System.out.println("From a new terminal type `kill -SIGINT "
+//                + pid + "` or `kill -SIGTERM "
+//                + pid + "` to stop processing packets\n");
+//
+//        System.out.println("My ID: " + parser.myId() + "\n");
         while (true) {
             // Sleep for 1 hour
             Thread.sleep(60 * 60 * 1000);

@@ -3,7 +3,6 @@ package cs451.link;
 import cs451.Host;
 import cs451.packet.AckPacket;
 import cs451.packet.MessagePacket;
-import cs451.utils.Pair;
 import cs451.utils.Triplet;
 
 import java.io.IOException;
@@ -16,11 +15,12 @@ public class PerfectLink extends Link{
 
     private BlockingQueue[] toSend;
     private Set<AckPacket> acked;
-    private Set<Pair> delivered;
+    private Set<Triplet> delivered;
     private DatagramSocket ds;
     private Boolean stop;
     private Function<MessagePacket, Void> deliverMethod;
     private Function<Void, Boolean> askForPackets;
+    private ConcurrentHashMap<Byte, Integer> maxSequenceNumberDelivered;
     private List<Host> hosts;
     private Map<Integer, Byte> portToHost;
 
@@ -39,6 +39,8 @@ public class PerfectLink extends Link{
         this.stop = false;
         this.deliverMethod = deliverMethod;
         this.delivered = new HashSet<>();
+        this.askForPackets = null;
+        this.maxSequenceNumberDelivered = new ConcurrentHashMap<>();
 
         // Starting the socket
         try {
@@ -53,6 +55,7 @@ public class PerfectLink extends Link{
 
         for (Host h: hosts) {
             this.portToHost.put(h.getPort(), (byte)h.getId());
+            //System.out.println(h.getPort() + " " + h.getId());
         }
 
 
@@ -64,13 +67,21 @@ public class PerfectLink extends Link{
      * @param msg
      */
     public void deliver(MessagePacket msg){
-        Pair pair = new Pair(msg.getPacketID(), msg.getSenderID());
+
+        // if I already delivered a bigger message for that original sender, I don't need it
+        // it will be the FIFO asking for this restriction, not the URB
+        if(this.maxSequenceNumberDelivered.getOrDefault(msg.getOriginalSenderID(), -1) > msg.getPacketID()){
+            return;
+        }
+
+        Triplet triplet = new Triplet(msg.getPacketID(), msg.getSenderID(), msg.getOriginalSenderID());
         synchronized (this.delivered){
-            if(!delivered.contains(pair)){
-                delivered.add(pair);
+            if(!delivered.contains(triplet)){
+                delivered.add(triplet);
                 this.deliverMethod.apply(msg);
             }
         }
+
     }
 
     /**
@@ -80,6 +91,13 @@ public class PerfectLink extends Link{
      * @param ack is the packet containing the ack
      */
     public void receiveAck(AckPacket ack){
+//        if(this.maxSequenceNumberDelivered.getOrDefault(ack.getOriginalSenderID(), -1) > ack.getPacketID()){
+//            if(ack.getPacketID() < this.maxSequenceNumberDelivered.get(ack.getOriginalSenderID())){
+////                System.out.println("Cannot deliver anymoreee");
+//                return;
+//            }
+//        }
+//        System.out.println("ACKED!!");
         synchronized (acked){
             acked.add(ack);
         }
@@ -91,7 +109,7 @@ public class PerfectLink extends Link{
      * @param packet is the packet to be sent
      */
     public void sendPacket(MessagePacket packet){
-        toSend[portToHost.get(packet.getPort())].add(new Pair<>(packet, 1));
+        toSend[portToHost.get(packet.getPort())].add(new AbstractMap.SimpleEntry<>(packet, 1));
     }
 
     /**
@@ -109,14 +127,19 @@ public class PerfectLink extends Link{
             }
 
             try {
+                int totalSizes = 0;
                 for(int i=1; i<=hosts.size(); i++){
                     if(i==hostID){continue;}
+                    if(toSend[i].size() < ( 1280 * 3)/hosts.size()){
+                        this.askForPackets.apply(null);
+                    }
 
                     Map.Entry<MessagePacket, Integer> toSendPair = (Map.Entry<MessagePacket, Integer>) toSend[i].take();
                     MessagePacket msgPkt = toSendPair.getKey();
 
                     synchronized (acked){
-                        AckPacket ack = new AckPacket(msgPkt.getSenderID(), msgPkt.getPacketID(), msgPkt.getPort());
+                        AckPacket ack = new AckPacket(msgPkt.getSenderID(),
+                                msgPkt.getOriginalSenderID(), msgPkt.getPacketID(), msgPkt.getPort());
 
                         if(acked.contains(ack)){
                             acked.remove(ack);
@@ -150,7 +173,27 @@ public class PerfectLink extends Link{
      * Remove the packets up until that sequence number and stop allowing them
      */
     public void removeHistory(byte process, int newMaxSequenceNumber){
+
+        // remove from acked
+        synchronized (this.acked){
+            acked.removeIf(ack -> ack.getOriginalSenderID() == process && ack.getPacketID() < newMaxSequenceNumber);
+        }
+
+        // remove from delivered
+        synchronized (this.delivered){
+            this.delivered.removeIf(t -> t.getOriginalSenderID() == process && t.getPacketID() < newMaxSequenceNumber);
+        }
+
+        // update the newMax for the given process
+        this.maxSequenceNumberDelivered.put(process, newMaxSequenceNumber);
+
+
         //System.out.println("PL history cleaned: acks -> " + acked.size() + " delivered -> " + delivered.size());
+
     }
 
+    public void setAskForPackets(Function<Void, Boolean> askForPackets) {
+        this.askForPackets = askForPackets;
+        new Thread(this::send).start();
+    }
 }

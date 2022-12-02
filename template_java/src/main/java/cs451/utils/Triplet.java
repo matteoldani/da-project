@@ -2,40 +2,52 @@ package cs451.utils;
 
 import java.util.Objects;
 
-public class Triplet {
+public class Triplet <T, U, V>{
 
-    private int packetID;
-    private byte senderID;
-    private byte originalSenderID;
+    private T first;
+    private U second;
+    private V third;
 
-    public Triplet(int packetID, byte senderID, byte originalSenderID){
-        this.senderID = senderID;
-        this.originalSenderID = originalSenderID;
-        this.packetID = packetID;
+    public Triplet(T first, U second, V third){
+        this.first = first;
+        this.second = second;
+        this.third = third;
     }
 
-    public int getPacketID() {
-        return packetID;
+    public T getFirst() {
+        return first;
     }
 
-    public byte getSenderID() {
-        return senderID;
+    public void setFirst(T first) {
+        this.first = first;
     }
 
-    public byte getOriginalSenderID() {
-        return originalSenderID;
+    public U getSecond() {
+        return second;
+    }
+
+    public void setSecond(U second) {
+        this.second = second;
+    }
+
+    public V getThird() {
+        return third;
+    }
+
+    public void setThird(V third) {
+        this.third = third;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Triplet triplet = (Triplet) o;
-        return packetID == triplet.packetID && senderID == triplet.senderID && originalSenderID == triplet.originalSenderID;
+        Triplet<?, ?, ?> triplet = (Triplet<?, ?, ?>) o;
+        return first.equals(triplet.first) && second.equals(triplet.second) && third.equals(triplet.third);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(packetID, senderID, originalSenderID);
+        return Objects.hash(first, second, third);
     }
 }

@@ -3,12 +3,21 @@ package cs451.parser;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ConfigParser {
 
     private String path;
-    private int numberOfMsgs;
+    private int numberOfProposal;
+    private int maxElementInProposal;
+    private int maxDistinctElement;
+
+    private List<List<Integer>> proposals;
+
+    public ConfigParser(){
+        this.proposals = new ArrayList<>();
+    }
 
     public boolean populate(String value) {
         File file = new File(value);
@@ -16,9 +25,25 @@ public class ConfigParser {
 
         try {
             List<String> lines = Files.readAllLines(file.toPath());
-            String number = lines.get(0).strip();
-            int m = Integer.parseInt(number);
-            this.numberOfMsgs = m;
+            String[] numbers = lines.get(0).strip().split(" ");
+            System.out.println("Number read in the frist line are:");
+            System.out.println("Number of proposal: " + numbers[0]);
+            System.out.println("Max element in proposal: " + numbers[1]);
+            System.out.println("Max distinc elements: " + numbers[2]);
+
+            this.numberOfProposal       = Integer.parseInt(numbers[0]);
+            this.maxElementInProposal   = Integer.parseInt(numbers[1]);
+            this.maxDistinctElement     = Integer.parseInt(numbers[2]);
+
+            for(int i=1; i<lines.size(); i++){
+                String line = lines.get(i);
+                String[] listNumbers = line.strip().split(" ");
+                List<Integer> newList = new ArrayList<>();
+                for(int j=0; j<listNumbers.length; j++){
+                    newList.add(Integer.parseInt(listNumbers[j]));
+                }
+                proposals.add(newList);
+            }
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -31,7 +56,19 @@ public class ConfigParser {
         return path;
     }
 
-    public int getnumberOfMsgs() {
-        return numberOfMsgs;
+    public int getNumberOfProposal() {
+        return numberOfProposal;
+    }
+
+    public int getMaxElementInProposal() {
+        return maxElementInProposal;
+    }
+
+    public int getMaxDistinctElement() {
+        return maxDistinctElement;
+    }
+
+    public List<List<Integer>> getProposals() {
+        return proposals;
     }
 }

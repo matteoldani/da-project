@@ -11,15 +11,17 @@ public class AckPacket extends Packet{
         super();
         this.type = PacketType.ACK;
         this.senderID = payload[1];
+        this.originalSenderID = payload[2];
         this.packetID = Utils.fromBytesToInt(payload, 3);
         this.port = Utils.fromBytesToInt(payload, 7);
 
     }
 
-    public AckPacket(byte senderID, int packetID, int port){
+    public AckPacket(byte senderID, byte originalSenderID, int packetID, int port){
         super();
         this.type = PacketType.ACK;
         this.senderID = senderID;
+        this.originalSenderID = originalSenderID;
         this.packetID = packetID;
         this.port = port;
     }
