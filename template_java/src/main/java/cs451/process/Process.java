@@ -70,16 +70,16 @@ public class Process {
         this.numberOfProposal = 0;
         this.proposals = proposals;
 
-        this.proposalAcks = new ConcurrentHashMap<>();
-        this.proposalNacks = new ConcurrentHashMap<>();
+        this.proposalAcks = new HashMap<>();
+        this.proposalNacks = new HashMap<>();
         this.activeProposalNumbers = ConcurrentHashMap.newKeySet();
-        this.proposedValues = new ConcurrentHashMap<>();
-        this.decided = new ConcurrentHashMap<>();
-        this.acceptedValues = new ConcurrentHashMap<>();
+        this.proposedValues = new HashMap<>();
+        this.decided = new HashMap<>();
+        this.acceptedValues = new HashMap<>();
 
         this.stop = false;
         this.threshold = (hosts.size() / 2) + 1;
-        this.proposalToActive = new ConcurrentHashMap<>();
+        this.proposalToActive = new HashMap<>();
 
         broadcast = new BestEffortBroadcast(hosts, hostID, this::deliver);
 
@@ -113,7 +113,7 @@ public class Process {
             // take the new proposal number
             int activeProposal = this.numberOfProposal++;
             ProposalMessage proposalMessage = new ProposalMessage(activeProposal, 1, toPropose);
-            System.out.println("Propose " + activeProposal + " is: " + Arrays.toString(toPropose.toArray()));
+//            System.out.println("Propose " + activeProposal + " is: " + Arrays.toString(toPropose.toArray()));
 
             // add the proposal to the active proposals
             this.activeProposalNumbers.add(activeProposal);
@@ -124,12 +124,12 @@ public class Process {
             if(this.proposedValues.containsKey(activeProposal)){
                 this.proposedValues.get(activeProposal).addAll(toPropose);
             }else{
-                this.proposedValues.put(activeProposal, ConcurrentHashMap.newKeySet());
+                this.proposedValues.put(activeProposal, new HashSet<>());
                 this.proposedValues.get(activeProposal).addAll(toPropose);
             }
 //            this.proposedValues.put(activeProposal, toPropose);
             // also the ack should be inserted
-            this.acceptedValues.put(activeProposal, ConcurrentHashMap.newKeySet());
+            this.acceptedValues.put(activeProposal, new HashSet<>());
             this.acceptedValues.get(activeProposal).addAll(toPropose);
             this.proposalAcks.put(activeProposal, 1);
             this.proposalNacks.put(activeProposal, 0);
@@ -142,7 +142,7 @@ public class Process {
     private void ackEvent(int proposalNumber){
         // check if I received enough acks
         if(this.proposalAcks.get(proposalNumber) >= this.threshold){
-            System.out.println("Decision " +proposalNumber+" is: " + Arrays.toString(this.proposedValues.get(proposalNumber).toArray()));
+//            System.out.println("Decision " +proposalNumber+" is: " + Arrays.toString(this.proposedValues.get(proposalNumber).toArray()));
             this.decided.put(proposalNumber, this.proposedValues.get(proposalNumber));
             int activeSize;
             synchronized (this.activeProposalNumbers) {
@@ -166,9 +166,9 @@ public class Process {
             this.proposalAcks.put(proposalNumber, 1);
             this.proposalNacks.put(proposalNumber, 0);
 
-            this.acceptedValues.put(proposalNumber, ConcurrentHashMap.newKeySet());
+            this.acceptedValues.put(proposalNumber, new HashSet<>());
             this.acceptedValues.get(proposalNumber).addAll(this.proposedValues.get(proposalNumber));
-            System.out.println("Nack event for proposal " + proposalNumber + " proposes: " + this.proposedValues.get(proposalNumber));
+//            System.out.println("Nack event for proposal " + proposalNumber + " proposes: " + this.proposedValues.get(proposalNumber));
             ProposalMessage pm = new ProposalMessage(proposalNumber, activeProposal,
                     this.proposedValues.get(proposalNumber));
 
@@ -200,13 +200,13 @@ public class Process {
             return;
         }
         if((this.proposalToActive.get(msg.getProposalNumber()) != msg.getActiveProposalNumber())){
-            System.out.println("Incorrect active proposal value for the Nack: " + this.proposalToActive.get(msg.getProposalNumber()) + " " +msg.getActiveProposalNumber());
+//            System.out.println("Incorrect active proposal value for the Nack: " + this.proposalToActive.get(msg.getProposalNumber()) + " " +msg.getActiveProposalNumber());
             return;
         }
 
         // TODO check that this actually adds all the values
         this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
-        System.out.println("Nack message for proposal " + msg.getProposalNumber() + " proposes: " + this.proposedValues.get(msg.getProposalNumber()));
+//        System.out.println("Nack message for proposal " + msg.getProposalNumber() + " proposes: " + this.proposedValues.get(msg.getProposalNumber()));
         this.proposalNacks.put(msg.getProposalNumber(),
                 this.proposalNacks.get(msg.getProposalNumber()) + 1);
 
@@ -219,12 +219,12 @@ public class Process {
     private void handleProposal(ProposalMessage msg, byte senderID){
 
         if(this.acceptedValues.get(msg.getProposalNumber()) == null){
-            this.acceptedValues.put(msg.getProposalNumber(), ConcurrentHashMap.newKeySet());
+            this.acceptedValues.put(msg.getProposalNumber(), new HashSet<>());
         }
 
         if(msg.getProposedValues().containsAll(this.acceptedValues.get(msg.getProposalNumber()))){
             this.acceptedValues.get(msg.getProposalNumber()).addAll(msg.getProposedValues());
-            System.out.println("ACK Process " + senderID + " proposal "+ msg.getProposalNumber()+ " is: " + this.acceptedValues.get(msg.getProposalNumber()));
+//            System.out.println("ACK Process " + senderID + " proposal "+ msg.getProposalNumber()+ " is: " + this.acceptedValues.get(msg.getProposalNumber()));
             // I have to send the ack message back
             AckMessage message = new AckMessage(msg.getProposalNumber(), msg.getActiveProposalNumber());
             this.broadcast.send(message, this.hosts.get(senderID-1)); // TODO check if this works
@@ -232,7 +232,7 @@ public class Process {
 //            msg.getProposedValues().addAll(this.acceptedValues.get(msg.getProposalNumber()));
 //            this.acceptedValues.put(msg.getProposalNumber(), msg.getProposedValues());
             this.acceptedValues.get(msg.getProposalNumber()).addAll(msg.getProposedValues());
-            System.out.println("NACK Process " + senderID + " proposal "+ msg.getProposalNumber()+ " is: " + this.acceptedValues.get(msg.getProposalNumber()));
+//            System.out.println("NACK Process " + senderID + " proposal "+ msg.getProposalNumber()+ " is: " + this.acceptedValues.get(msg.getProposalNumber()));
             NackMessage message = new NackMessage(msg.getProposalNumber(), msg.getActiveProposalNumber(),
                     this.acceptedValues.get(msg.getProposalNumber()));
 

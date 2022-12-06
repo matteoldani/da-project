@@ -33,11 +33,11 @@ public class  Main {
 
             Map<Integer, Set<Integer>> processDecided = process.getDecided();
 
-            // DEBUG
-            System.out.println("Number of proposal decided = " + processDecided.size());
-            for(Integer i: processDecided.keySet()){
-                System.out.println("Decided proposal: " + i);
-            }
+//            // DEBUG
+//            System.out.println("Number of proposal decided = " + processDecided.size());
+//            for(Integer i: processDecided.keySet()){
+//                System.out.println("Decided proposal: " + i);
+//            }
 
             synchronized (processDecided) {
                 for(int i=0; i<processDecided.size(); i++){
