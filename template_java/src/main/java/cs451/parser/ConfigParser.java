@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ConfigParser {
 
@@ -13,7 +15,7 @@ public class ConfigParser {
     private int maxElementInProposal;
     private int maxDistinctElement;
 
-    private List<List<Integer>> proposals;
+    private List<Set<Integer>> proposals;
 
     public ConfigParser(){
         this.proposals = new ArrayList<>();
@@ -26,10 +28,10 @@ public class ConfigParser {
         try {
             List<String> lines = Files.readAllLines(file.toPath());
             String[] numbers = lines.get(0).strip().split(" ");
-            System.out.println("Number read in the frist line are:");
-            System.out.println("Number of proposal: " + numbers[0]);
-            System.out.println("Max element in proposal: " + numbers[1]);
-            System.out.println("Max distinc elements: " + numbers[2]);
+//            System.out.println("Number read in the frist line are:");
+//            System.out.println("Number of proposal: " + numbers[0]);
+//            System.out.println("Max element in proposal: " + numbers[1]);
+//            System.out.println("Max distinc elements: " + numbers[2]);
 
             this.numberOfProposal       = Integer.parseInt(numbers[0]);
             this.maxElementInProposal   = Integer.parseInt(numbers[1]);
@@ -38,7 +40,7 @@ public class ConfigParser {
             for(int i=1; i<lines.size(); i++){
                 String line = lines.get(i);
                 String[] listNumbers = line.strip().split(" ");
-                List<Integer> newList = new ArrayList<>();
+                Set<Integer> newList = new HashSet<>();
                 for(int j=0; j<listNumbers.length; j++){
                     newList.add(Integer.parseInt(listNumbers[j]));
                 }
@@ -68,7 +70,7 @@ public class ConfigParser {
         return maxDistinctElement;
     }
 
-    public List<List<Integer>> getProposals() {
+    public List<Set<Integer>> getProposals() {
         return proposals;
     }
 }

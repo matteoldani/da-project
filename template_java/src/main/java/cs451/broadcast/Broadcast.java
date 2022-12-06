@@ -3,6 +3,7 @@ package cs451.broadcast;
 import cs451.Host;
 import cs451.link.Link;
 import cs451.link.PerfectLink;
+import cs451.message.Message;
 import cs451.packet.MessagePacket;
 
 import java.util.List;
@@ -21,7 +22,10 @@ public abstract class Broadcast {
         this.hosts = hosts;
     }
 
-    public abstract void broadcast(int mStart, int mEnd);
+    public abstract void broadcast(List<Message> messages);
+    public abstract void broadcast(Message message);
+
+    public abstract void send(Message message, Host host);
     public abstract Void deliver(MessagePacket msg);
     public abstract void stopThread();
     public abstract PerfectLink getPl();

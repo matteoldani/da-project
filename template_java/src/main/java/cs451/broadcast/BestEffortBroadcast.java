@@ -1,6 +1,7 @@
 package cs451.broadcast;
 
 import cs451.Host;
+import cs451.message.Message;
 import cs451.message.ProposalMessage;
 import cs451.link.PerfectLink;
 import cs451.packet.MessagePacket;
@@ -25,52 +26,74 @@ public class BestEffortBroadcast extends Broadcast {
         this.deliverMethod = deliverMethod;
     }
     @Override
-    public void broadcast(int mStart, int mEnd){
+    public void broadcast(List<Message> messages){
+        int pktIDCounter =0;
         for(Host h: this.hosts){
             // TODO do not send to myself, just pretend that I delivered it
             try {
-                MessagePacket pkt = new MessagePacket(this.hostID, this.hostID, this.pktID, InetAddress.getByName(h.getIp()), h.getPort());
-                ProposalMessage msg;
-
-                // I should be sure that the number of messages fits the packet
-                for(int i=mStart; i<mEnd; i++){
-                    msg = new ProposalMessage(i, Utils.fromIntToBytes(i));
-                    pkt.addMessage(msg);
+                int i=0;
+                pktIDCounter =0;
+                while(i<messages.size()){
+                    MessagePacket pkt = new MessagePacket(this.hostID, this.pktID + pktIDCounter,
+                            InetAddress.getByName(h.getIp()), h.getPort());
+                    while(i<messages.size() && pkt.addMessage(messages.get(i))){
+                        i++;
+                    }
+                    pktIDCounter++;
+                    if(this.hostID == h.getId()){
+//                        pkt.serializePacket();
+//                        this.deliverMethod.apply(pkt);
+                    }else{
+                        this.pl.sendPacket(pkt);
+                    }
                 }
+
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        this.pktID+=(pktIDCounter+1);
+    }
+
+    @Override
+    public void broadcast(Message message){
+        for(Host h: this.hosts){
+            try {
+                MessagePacket pkt = new MessagePacket(this.hostID, this.pktID, InetAddress.getByName(h.getIp()), h.getPort());
+                pkt.addMessage(message);
+
                 if(this.hostID == h.getId()){
-                    pkt.serializePacket();
-                    this.deliverMethod.apply(pkt);
+//                    pkt.serializePacket();
+//                    this.deliverMethod.apply(pkt);
                 }else{
                     this.pl.sendPacket(pkt);
                 }
+
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
         }
+
         this.pktID++;
     }
 
-    public void broadcast(MessagePacket msg){
-        for(Host h: this.hosts){
-            // TODO do not send to myself, just pretend that I delivered it
-            // TODO be sure that the original sender/real sender are correct
-            try {
+    @Override
+    public void send(Message message, Host host) {
+        try {
+            MessagePacket pkt = new MessagePacket(this.hostID, this.pktID, InetAddress.getByName(host.getIp()), host.getPort());
+            pkt.addMessage(message);
 
-                MessagePacket pkt = new MessagePacket(InetAddress.getByName(h.getIp()),
-                        h.getPort(), msg.getPayloadByte());
-
-                if(h.getId() == msg.getSenderID()){
-                    // not sending but this needs to be delivered as well
-                    this.deliverMethod.apply(pkt);
-
-                }else {
-                    this.pl.sendPacket(pkt);
-                }
-            } catch (UnknownHostException e) {
-                throw new RuntimeException(e);
+            if(this.hostID == host.getId()){
+//                pkt.serializePacket();
+//                this.deliverMethod.apply(pkt);
+            }else{
+                this.pl.sendPacket(pkt);
             }
 
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
         }
+        this.pktID++;
     }
 
     @Override

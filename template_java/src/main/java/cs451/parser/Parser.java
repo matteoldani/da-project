@@ -16,7 +16,6 @@ public class Parser {
     private IdParser idParser;
     private HostsParser hostsParser;
     private OutputParser outputParser;
-    private ConfigParser configParser;
 
     public Parser(String[] args) {
         this.args = args;
@@ -28,7 +27,6 @@ public class Parser {
         idParser = new IdParser();
         hostsParser = new HostsParser();
         outputParser = new OutputParser();
-        configParser = new ConfigParser();
 
         int argsNum = args.length;
         if (argsNum != Constants.ARG_LIMIT_CONFIG) {
@@ -51,9 +49,6 @@ public class Parser {
             help();
         }
 
-        if (!configParser.populate(args[Constants.CONFIG_VALUE])) {
-            help();
-        }
     }
 
     private void help() {
@@ -73,8 +68,6 @@ public class Parser {
         return outputParser.getPath();
     }
 
-    public String config() {
-        return configParser.getPath();
-    }
+
 
 }

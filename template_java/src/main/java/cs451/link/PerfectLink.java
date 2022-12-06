@@ -55,6 +55,8 @@ public class PerfectLink extends Link{
             this.portToHost.put(h.getPort(), (byte)h.getId());
         }
 
+        new Thread(this::send).start();
+
 
     }
 
@@ -112,7 +114,7 @@ public class PerfectLink extends Link{
                 for(int i=1; i<=hosts.size(); i++){
                     if(i==hostID){continue;}
 
-                    Map.Entry<MessagePacket, Integer> toSendPair = (Map.Entry<MessagePacket, Integer>) toSend[i].take();
+                    Pair<MessagePacket, Integer> toSendPair = (Pair<MessagePacket, Integer>) toSend[i].take();
                     MessagePacket msgPkt = toSendPair.getKey();
 
                     synchronized (acked){
@@ -124,9 +126,14 @@ public class PerfectLink extends Link{
                         }
                     }
 
-                    byte[] msgPayload = msgPkt.serializePacket();
+                    Byte[] msgPayload = msgPkt.serializePacket();
+                    byte[] toSendPayload = new byte[msgPayload.length];
+
+                    for(int j=0; j<msgPayload.length; j++){
+                        toSendPayload[j] = msgPayload[j];
+                    }
                     DatagramPacket datagramPacket =
-                            new DatagramPacket(msgPayload, msgPayload.length,
+                            new DatagramPacket(toSendPayload, msgPayload.length,
                                     msgPkt.getIpAddress(), msgPkt.getPort());
                     ds.send(datagramPacket);
                     toSend[i].add(toSendPair);

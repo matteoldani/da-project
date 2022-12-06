@@ -25,7 +25,7 @@ public abstract class Packet {
 
     }
 
-    public byte[] serializePacket(){
+    public Byte[] serializePacket(){
         return null;
     }
 

@@ -9,14 +9,14 @@ public class AckMessage extends Message{
 
     private MessageType type;
     private int proposalNumber;
-    private int activeProposal;
 
+    private int activeProposalNumber;
     private Byte[] payload;
 
-    public AckMessage(int proposalNumber, int activeProposal){
+    public AckMessage(int proposalNumber, int activeProposalNumber){
         this.type = MessageType.ACK;
         this.proposalNumber = proposalNumber;
-        this.activeProposal = activeProposal;
+        this.activeProposalNumber = activeProposalNumber;
     }
 
     public AckMessage(Byte[] paylaod){
@@ -32,17 +32,16 @@ public class AckMessage extends Message{
 
         // add the proposal number
         byte[] proposalNumber = Utils.fromIntToBytes(this.proposalNumber);
-        for(int i=0; i<proposalNumber.length; i++){
-            payloadList.add(proposalNumber[i]);
+        for (byte b : proposalNumber) {
+            payloadList.add(b);
         }
 
-        // add the active proposal
-        byte[] activeProposal = Utils.fromIntToBytes(this.activeProposal);
-        for(int i=0; i<activeProposal.length; i++){
-            payloadList.add(activeProposal[i]);
+        byte[] activeProposalNumber = Utils.fromIntToBytes(this.activeProposalNumber);
+        for (byte b : activeProposalNumber) {
+            payloadList.add(b);
         }
 
-        this.payload = (Byte[]) payloadList.toArray();
+        this.payload = payloadList.toArray(new Byte[0]);
         return this.payload;
     }
 
@@ -54,23 +53,19 @@ public class AckMessage extends Message{
         // proposal number
         this.proposalNumber = Utils.fromBytesToInt(this.payload, pos);
         pos+=4;
-        // get the active proposal
-        this.activeProposal = Utils.fromBytesToInt(this.payload, pos);
-    }
-
-    public MessageType getType() {
-        return type;
+        this.activeProposalNumber = Utils.fromBytesToInt(this.payload, pos);
     }
 
     public int getProposalNumber() {
         return proposalNumber;
     }
-
-    public int getActiveProposal() {
-        return activeProposal;
-    }
+    public int getActiveProposalNumber(){return activeProposalNumber;}
 
     public Byte[] getPayload() {
+
+        if(payload == null){
+            return this.serialize();
+        }
         return payload;
     }
 }

@@ -8,6 +8,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,15 +24,28 @@ public class  Main {
         if(process == null){return;}
         process.stopThread();
 
+        Set<Integer> toExclude = new HashSet<>();
+
 
         //write/flush output file if necessary
-        //System.out.println("Writing output.");
+        System.out.println("Writing output.");
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outFile))) {
 
             Map<Integer, Set<Integer>> processDecided = process.getDecided();
+
+            // DEBUG
+            System.out.println("Number of proposal decided = " + processDecided.size());
+            for(Integer i: processDecided.keySet()){
+                System.out.println("Decided proposal: " + i);
+            }
+
             synchronized (processDecided) {
                 for(int i=0; i<processDecided.size(); i++){
                     StringBuilder stringBuilder = new StringBuilder();
+                    if(!processDecided.containsKey(i)){
+                        System.out.println("Missing proposal " + i + " but the total size is: " + processDecided.size());
+                        break;
+                    }
                     for(Integer n: processDecided.get(i)){
                         stringBuilder.append(n);
                         stringBuilder.append(' ');
@@ -44,7 +58,7 @@ public class  Main {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        //System.out.println("Output written.");
+        System.out.println("Output written.");
     }
 
     private static void initSignalHandlers() {
@@ -63,9 +77,8 @@ public class  Main {
         initSignalHandlers();
 
         outFile = parser.output();
-
         ConfigParser configParser = new ConfigParser();
-        configParser.populate(parser.config());
+        configParser.populate(args[Constants.CONFIG_VALUE]);
 
         process = new Process(parser.hosts(), (byte)parser.myId(), configParser.getNumberOfProposal(),
                 configParser.getMaxElementInProposal(), configParser.getMaxDistinctElement(), configParser.getProposals());

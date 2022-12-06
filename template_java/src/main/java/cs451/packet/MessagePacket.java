@@ -1,11 +1,14 @@
 package cs451.packet;
 
-import cs451.message.ProposalMessage;
+import cs451.message.*;
 import cs451.utils.Utils;
 import static cs451.packet.MessagePacketConstants.*;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 //import static cs451.packet.MessagePacketConstants.SENDER_ID;
 
@@ -14,7 +17,7 @@ public class MessagePacket extends Packet {
     private byte msgs;
     private ArrayList<Byte> payload;
     private int remainingSpace;
-    private byte [] payloadByte;
+    private Byte [] payloadByte;
 
     /**
      * constructor to be used when creating a packet to be sent
@@ -32,7 +35,7 @@ public class MessagePacket extends Packet {
         this.payloadByte = null;
     }
 
-    public MessagePacket(InetAddress remoteIp, int remotePort, byte[] payloadByte){
+    public MessagePacket(InetAddress remoteIp, int remotePort, Byte[] payloadByte){
         super(payloadByte[SENDER_ID], Utils.fromBytesToInt(payloadByte, PACKET_ID),
                 remoteIp, remotePort, PacketType.MSG);
 
@@ -44,7 +47,7 @@ public class MessagePacket extends Packet {
      * constructor to be used when receiving a packet
      * @param payload
      */
-    public MessagePacket(byte[] payload){
+    public MessagePacket(Byte[] payload){
         super();
 
         // I need to parse the message to deliver it (?)
@@ -57,12 +60,30 @@ public class MessagePacket extends Packet {
         this.payloadByte = payload;
     }
 
+    public MessagePacket(byte[] payload){
+        super();
+
+        Byte[] correctPayload = new Byte[payload.length];
+        for(int i=0; i<payload.length; i++){
+            correctPayload[i] = payload[i];
+        }
+
+        // I need to parse the message to deliver it (?)
+        this.type = PacketType.MSG;
+        this.senderID = payload[SENDER_ID];
+        this.packetID = Utils.fromBytesToInt(payload, PACKET_ID);
+
+        this.msgs = payload[MSGS];
+
+        this.payloadByte = correctPayload;
+    }
+
     /**
      * adding a message to the payload of the packet to be sent
      * @param msg is the message to be added
      * @return true if the message can be added, false if there is no space
      */
-    public boolean addMessage(ProposalMessage msg){
+    public boolean addMessage(Message msg){
 
         if(this.msgs == 8){
             return false;
@@ -70,16 +91,20 @@ public class MessagePacket extends Packet {
 
         Byte[] payload = msg.getPayload();
 
-        if(payload.length + MSGS + 1 > this.remainingSpace){
+        if(payload.length + MSGS + 5 > this.remainingSpace){
             return false;
         }
 
-        //adding the payload
-        for(int i=0; i<msg.getPayload().length; i++){
-            this.payload.add(payload[i]);
+        // adding the length of the payload to the payload
+        byte[] payloadLen = Utils.fromIntToBytes(payload.length);
+        for(int i=0; i<4; i++){
+            this.payload.add(payloadLen[i]);
         }
 
-        this.remainingSpace -= payload.length;
+        //adding the payload
+        this.payload.addAll(Arrays.asList(payload));
+
+        this.remainingSpace -= (payload.length + 4); // 4 is the integer used fot the length
         this.msgs += 1;
 
         return true;
@@ -100,37 +125,70 @@ public class MessagePacket extends Packet {
      *
      * @return the packet serialized as a byte array
      */
-    public byte[] serializePacket(){
+    public Byte[] serializePacket(){
 
         if(this.payloadByte != null){
             return this.payloadByte;
         }
 
-        byte[] payload = new byte[this.payload.size()+8];
-
-        // adding the type to the payload
-        payload[TYPE] = (byte) this.type.ordinal();
-        // adding sender ID to the payload
-        payload[SENDER_ID] = this.senderID;
+        // adding the number of messages to the payload
+        this.payload.add(0, this.msgs);
         // adding packet_ID to payload
         byte[] packetIDTobyte = Utils.fromIntToBytes(packetID);
-        for(int i=0; i<packetIDTobyte.length;i++){
-            payload[PACKET_ID+i] = packetIDTobyte[i];
-        }
-        payload[MSGS] = this.msgs;
+        this.payload.add(0, packetIDTobyte[3]);
+        this.payload.add(0, packetIDTobyte[2]);
+        this.payload.add(0, packetIDTobyte[1]);
+        this.payload.add(0, packetIDTobyte[0]);
+        // adding sender ID to the payload
+        this.payload.add(0, this.senderID);
+        // adding the type to the payload
+        this.payload.add(0, (byte) this.type.ordinal());
 
-        for(int i=0; i<this.payload.size(); i++){
-            payload[i+MSGS+1] = this.payload.get(i);
-        }
+        Byte[] payload = this.payload.toArray(new Byte[0]);
         this.payloadByte = payload;
         return payload;
+    }
+
+    public List<Message> getMessages(){
+        if(payloadByte == null){
+            return null;
+        }
+//        System.out.println("Payload byte is: " + Arrays.toString(payloadByte));
+        List<Message> listOfMessages = new ArrayList<>();
+        int pos = MSGS + 1;
+        for(int i=0; i<msgs; i++){
+            int messageLen = Utils.fromBytesToInt(payloadByte, pos);
+//            System.out.println("Message len is: " + messageLen);
+            pos+=4;
+            int messageType = payloadByte[pos];
+            Message msg;
+            switch (messageType){
+                case 0: // MSG
+                    msg = new ProposalMessage(Arrays.copyOfRange(payloadByte, pos, pos+messageLen));
+                    break;
+                case 1:
+                    msg = new AckMessage(Arrays.copyOfRange(payloadByte, pos, pos+messageLen));
+                    break;
+                case 2:
+                    msg = new NackMessage(Arrays.copyOfRange(payloadByte, pos, pos+messageLen));
+                    break;
+                default:
+                    msg = null;
+                    System.err.println("Invalid message type");
+                    break;
+            }
+            pos+=messageLen;
+            listOfMessages.add(msg);
+        }
+
+        return listOfMessages;
     }
 
     public int getMsgs() {
         return msgs;
     }
 
-    public byte[] getPayloadByte() {
+    public Byte[] getPayloadByte() {
         return this.payloadByte;
     }
 
