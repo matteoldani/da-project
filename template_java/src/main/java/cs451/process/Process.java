@@ -75,7 +75,7 @@ public class Process {
         this.activeProposalNumbers = ConcurrentHashMap.newKeySet();
         this.proposedValues = new HashMap<>();
         this.decided = new HashMap<>();
-        this.acceptedValues = new HashMap<>();
+        this.acceptedValues = new ConcurrentHashMap<>();
 
         this.stop = false;
         this.threshold = (hosts.size() / 2) + 1;
@@ -85,7 +85,7 @@ public class Process {
 
         server = new ReceiverServer(broadcast.getPl(),
                 //TODO FIX THIS SIZE
-                (4*maxNumberInProposal+40)*8,
+                (4*maxDistinctNumbers+40)*8,
                 hosts.get(hostID-1).getPort(),
                 hosts);
 
@@ -94,10 +94,6 @@ public class Process {
 
         sendProposal();
         sendProposal();
-
-        // TODO I need to create the threads that sends proposal when the active proposal set is
-        // TODO below a certain threshold
-
     }
 
     private void sendProposal(){
@@ -106,28 +102,31 @@ public class Process {
         List<Message> proposalMessageList = new ArrayList<>();
         for(int i=0; i<8; i++){
             if(this.proposals.size() == 0){
+                System.out.println("The set of proposal is empty");
                 break;
             }
             Set<Integer> toPropose = this.proposals.remove(0);
 
             // take the new proposal number
             int activeProposal = this.numberOfProposal++;
-            ProposalMessage proposalMessage = new ProposalMessage(activeProposal, 1, toPropose);
-//            System.out.println("Propose " + activeProposal + " is: " + Arrays.toString(toPropose.toArray()));
 
             // add the proposal to the active proposals
             this.activeProposalNumbers.add(activeProposal);
             // specify the active proposal number for this proposal (1 is the starting one)
             this.proposalToActive.put(activeProposal, 1);
             // add the values to be proposed. If the proposed are not null, then simply add to them
-            // TODO proably this is an unnecessary computation
+
             if(this.proposedValues.containsKey(activeProposal)){
                 this.proposedValues.get(activeProposal).addAll(toPropose);
             }else{
                 this.proposedValues.put(activeProposal, new HashSet<>());
                 this.proposedValues.get(activeProposal).addAll(toPropose);
             }
-//            this.proposedValues.put(activeProposal, toPropose);
+
+            toPropose.addAll(this.proposedValues.get(activeProposal));
+            ProposalMessage proposalMessage =
+                    new ProposalMessage(activeProposal, 1, toPropose);
+
             // also the ack should be inserted
             this.acceptedValues.put(activeProposal, new HashSet<>());
             this.acceptedValues.get(activeProposal).addAll(toPropose);
@@ -145,11 +144,13 @@ public class Process {
 //            System.out.println("Decision " +proposalNumber+" is: " + Arrays.toString(this.proposedValues.get(proposalNumber).toArray()));
             this.decided.put(proposalNumber, this.proposedValues.get(proposalNumber));
             int activeSize;
-            synchronized (this.activeProposalNumbers) {
-                this.activeProposalNumbers.remove(proposalNumber);
-                activeSize = this.activeProposalNumbers.size();
-            }
 
+            this.activeProposalNumbers.remove(proposalNumber);
+            activeSize = this.activeProposalNumbers.size();
+            System.out.println("Size of the set is: " + activeSize);
+//            for(Integer i: this.activeProposalNumbers){
+//                System.out.println(i);
+//            }
             if(activeSize<8){
                 sendProposal();
             }
@@ -188,7 +189,7 @@ public class Process {
 
         // increase the acks for a specific proposal
         this.proposalAcks.put(msg.getProposalNumber(),
-                this.proposalAcks.get(msg.getProposalNumber()) + 1);
+                        this.proposalAcks.getOrDefault(msg.getProposalNumber(), 0) + 1);
 
 
         ackEvent(msg.getProposalNumber());
@@ -205,7 +206,13 @@ public class Process {
         }
 
         // TODO check that this actually adds all the values
-        this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
+        if(this.proposedValues.containsKey(msg.getProposalNumber())){
+            this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
+        }else{
+            this.proposedValues.put(msg.getProposalNumber(), new HashSet<>());
+            this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
+        }
+
 //        System.out.println("Nack message for proposal " + msg.getProposalNumber() + " proposes: " + this.proposedValues.get(msg.getProposalNumber()));
         this.proposalNacks.put(msg.getProposalNumber(),
                 this.proposalNacks.get(msg.getProposalNumber()) + 1);
@@ -233,8 +240,10 @@ public class Process {
 //            this.acceptedValues.put(msg.getProposalNumber(), msg.getProposedValues());
             this.acceptedValues.get(msg.getProposalNumber()).addAll(msg.getProposedValues());
 //            System.out.println("NACK Process " + senderID + " proposal "+ msg.getProposalNumber()+ " is: " + this.acceptedValues.get(msg.getProposalNumber()));
+            Set<Integer> toNack = new HashSet<>();
+            toNack.addAll(this.acceptedValues.get(msg.getProposalNumber()));
             NackMessage message = new NackMessage(msg.getProposalNumber(), msg.getActiveProposalNumber(),
-                    this.acceptedValues.get(msg.getProposalNumber()));
+                    toNack);
 
             this.broadcast.send(message, this.hosts.get(senderID-1));
         }
