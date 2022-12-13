@@ -41,8 +41,8 @@ public class BestEffortBroadcast extends Broadcast {
                     }
                     pktIDCounter++;
                     if(this.hostID == h.getId()){
-//                        pkt.serializePacket();
-//                        this.deliverMethod.apply(pkt);
+                        pkt.serializePacket();
+                        this.deliverMethod.apply(pkt);
                     }else{
                         this.pl.sendPacket(pkt);
                     }
@@ -63,8 +63,8 @@ public class BestEffortBroadcast extends Broadcast {
                 pkt.addMessage(message);
 
                 if(this.hostID == h.getId()){
-//                    pkt.serializePacket();
-//                    this.deliverMethod.apply(pkt);
+                    pkt.serializePacket();
+                    this.deliverMethod.apply(pkt);
                 }else{
                     this.pl.sendPacket(pkt);
                 }
@@ -84,8 +84,8 @@ public class BestEffortBroadcast extends Broadcast {
             pkt.addMessage(message);
 
             if(this.hostID == host.getId()){
-//                pkt.serializePacket();
-//                this.deliverMethod.apply(pkt);
+                pkt.serializePacket();
+                this.deliverMethod.apply(pkt);
             }else{
                 this.pl.sendPacket(pkt);
             }

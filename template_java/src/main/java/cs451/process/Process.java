@@ -90,7 +90,7 @@ public class Process {
                 hosts);
 
         new Thread(server).start();
-        new Thread(this::removeHistory).start();
+//        new Thread(this::removeHistory).start();
 
         sendProposal();
         sendProposal();
@@ -105,6 +105,7 @@ public class Process {
                 System.out.println("The set of proposal is empty");
                 break;
             }
+
             Set<Integer> toPropose = this.proposals.remove(0);
 
             // take the new proposal number
@@ -116,21 +117,18 @@ public class Process {
             this.proposalToActive.put(activeProposal, 1);
             // add the values to be proposed. If the proposed are not null, then simply add to them
 
-            if(this.proposedValues.containsKey(activeProposal)){
-                this.proposedValues.get(activeProposal).addAll(toPropose);
-            }else{
-                this.proposedValues.put(activeProposal, new HashSet<>());
-                this.proposedValues.get(activeProposal).addAll(toPropose);
-            }
+            this.proposedValues.put(activeProposal, new HashSet<>());
+            this.proposedValues.get(activeProposal).addAll(toPropose);
 
-            toPropose.addAll(this.proposedValues.get(activeProposal));
             ProposalMessage proposalMessage =
                     new ProposalMessage(activeProposal, 1, toPropose);
 
             // also the ack should be inserted
-            this.acceptedValues.put(activeProposal, new HashSet<>());
-            this.acceptedValues.get(activeProposal).addAll(toPropose);
-            this.proposalAcks.put(activeProposal, 1);
+//            if(!this.acceptedValues.containsKey(activeProposal)){
+//                this.acceptedValues.put(activeProposal, new HashSet<>());
+//            }
+
+            this.proposalAcks.put(activeProposal, 0);
             this.proposalNacks.put(activeProposal, 0);
             proposalMessageList.add(proposalMessage);
         }
@@ -141,16 +139,14 @@ public class Process {
     private void ackEvent(int proposalNumber){
         // check if I received enough acks
         if(this.proposalAcks.get(proposalNumber) >= this.threshold){
-//            System.out.println("Decision " +proposalNumber+" is: " + Arrays.toString(this.proposedValues.get(proposalNumber).toArray()));
+
             this.decided.put(proposalNumber, this.proposedValues.get(proposalNumber));
             int activeSize;
 
             this.activeProposalNumbers.remove(proposalNumber);
             activeSize = this.activeProposalNumbers.size();
             System.out.println("Size of the set is: " + activeSize);
-//            for(Integer i: this.activeProposalNumbers){
-//                System.out.println(i);
-//            }
+
             if(activeSize<8){
                 sendProposal();
             }
@@ -164,11 +160,11 @@ public class Process {
             int activeProposal = this.proposalToActive.get(proposalNumber) + 1;
             this.proposalToActive.put(proposalNumber, activeProposal);
 
-            this.proposalAcks.put(proposalNumber, 1);
+            this.proposalAcks.put(proposalNumber, 0);
             this.proposalNacks.put(proposalNumber, 0);
 
-            this.acceptedValues.put(proposalNumber, new HashSet<>());
-            this.acceptedValues.get(proposalNumber).addAll(this.proposedValues.get(proposalNumber));
+//            this.acceptedValues.put(proposalNumber, new HashSet<>());
+//            this.acceptedValues.get(proposalNumber).addAll(this.proposedValues.get(proposalNumber));
 //            System.out.println("Nack event for proposal " + proposalNumber + " proposes: " + this.proposedValues.get(proposalNumber));
             ProposalMessage pm = new ProposalMessage(proposalNumber, activeProposal,
                     this.proposedValues.get(proposalNumber));
@@ -201,21 +197,21 @@ public class Process {
             return;
         }
         if((this.proposalToActive.get(msg.getProposalNumber()) != msg.getActiveProposalNumber())){
-//            System.out.println("Incorrect active proposal value for the Nack: " + this.proposalToActive.get(msg.getProposalNumber()) + " " +msg.getActiveProposalNumber());
             return;
         }
 
-        // TODO check that this actually adds all the values
-        if(this.proposedValues.containsKey(msg.getProposalNumber())){
-            this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
-        }else{
-            this.proposedValues.put(msg.getProposalNumber(), new HashSet<>());
-            this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
-        }
+//        // TODO check that this actually adds all the values
+//        if(this.proposedValues.containsKey(msg.getProposalNumber())){
+//            this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
+//        }else{
+//            this.proposedValues.put(msg.getProposalNumber(), new HashSet<>());
+//            this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
+//        }
+        this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
 
 //        System.out.println("Nack message for proposal " + msg.getProposalNumber() + " proposes: " + this.proposedValues.get(msg.getProposalNumber()));
         this.proposalNacks.put(msg.getProposalNumber(),
-                this.proposalNacks.get(msg.getProposalNumber()) + 1);
+                this.proposalNacks.getOrDefault(msg.getProposalNumber(), 0) + 1);
 
 
         // check if I have to broadcast
@@ -225,8 +221,8 @@ public class Process {
 
     private void handleProposal(ProposalMessage msg, byte senderID){
 
-        if(this.acceptedValues.get(msg.getProposalNumber()) == null){
-            this.acceptedValues.put(msg.getProposalNumber(), new HashSet<>());
+        if(!this.acceptedValues.containsKey(msg.getProposalNumber())){
+            this.acceptedValues.put(msg.getProposalNumber(), ConcurrentHashMap.newKeySet());
         }
 
         if(msg.getProposedValues().containsAll(this.acceptedValues.get(msg.getProposalNumber()))){
