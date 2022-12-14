@@ -74,6 +74,7 @@ for i in range(1, number_processes+1):
         print("File not found: " + output_path + str(i) + '.output')
     
 
+# validity check
 for i in range(number_proposal):
     # create the set of all the proposed values
     all_proposed = set()
@@ -102,6 +103,13 @@ for i in range(number_proposal):
                 print("")
                 exit()
 
-
+# consistency check
+for i in range(len(decisions)):
+    for j in range(len(decisions[i])):
+        for k in range(j+1, len(decisions[i])):
+            if not (set(decisions[i][j]).issubset(decisions[i][k]) or set(decisions[i][k]).issubset(decisions[i][j])):
+                print(f"Decision {i} of process {j} and process {k} are not consistent")
+                exit()
+                
 print("Validation is successful!")
          
