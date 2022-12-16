@@ -28,10 +28,6 @@ public class ConfigParser {
         try {
             List<String> lines = Files.readAllLines(file.toPath());
             String[] numbers = lines.get(0).strip().split(" ");
-//            System.out.println("Number read in the frist line are:");
-//            System.out.println("Number of proposal: " + numbers[0]);
-//            System.out.println("Max element in proposal: " + numbers[1]);
-//            System.out.println("Max distinc elements: " + numbers[2]);
 
             this.numberOfProposal       = Integer.parseInt(numbers[0]);
             this.maxElementInProposal   = Integer.parseInt(numbers[1]);

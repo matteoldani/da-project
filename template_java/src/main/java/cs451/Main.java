@@ -2,6 +2,7 @@ package cs451;
 
 import cs451.parser.ConfigParser;
 import cs451.parser.Parser;
+import cs451.parser.ProposalParser;
 import cs451.process.Process;
 import cs451.utils.GlobalMemExceptionHandler;
 import cs451.utils.SystemParameters;
@@ -99,17 +100,17 @@ public class  Main {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        ConfigParser configParser = new ConfigParser();
+        ProposalParser configParser = new ProposalParser();
         configParser.populate(args[Constants.CONFIG_VALUE]);
         SystemParameters.MAX_DS = configParser.getMaxDistinctElement();
 
         if(SystemParameters.MAX_DS > 500 && parser.hosts().size() > 80){
-            SystemParameters.REFILL_THRESHOLD = 2;
+            SystemParameters.REFILL_THRESHOLD = 1;
             SystemParameters.MAX_MESSAGES_IN_PACKET = 1;
             System.out.println("The parameters of the system are now strict");
         }
         process = new Process(parser.hosts(), (byte)parser.myId(), configParser.getNumberOfProposal(),
-                configParser.getMaxElementInProposal(), configParser.getMaxDistinctElement(), configParser.getProposals());
+                configParser.getMaxElementInProposal(), configParser.getMaxDistinctElement(), configParser);
 
         while (true) {
             // Sleep for 1 hour

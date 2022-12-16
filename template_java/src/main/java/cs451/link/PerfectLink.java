@@ -111,11 +111,40 @@ public class PerfectLink extends Link{
      * not slow down the application
      */
     private void send(){
+        int sleepTime;
+        int diffAckLimit;
+        switch (this.hosts.size() / 10){
+            case 0: case 1: case 2: case 3:
+                sleepTime = this.hosts.size()/10;
+                break;
+            case 4: case 5: case 6: case 7:
+                sleepTime = this.hosts.size()/6 + 10;
+                break;
+            default:
+                sleepTime = this.hosts.size();
+                break;
+        }
 
-        int sleepTime = (int) (this.hosts.size() * (SystemParameters.MAX_DS * 0.01 + 1) * 0.1);
-        sleepTime = Math.max(10, sleepTime);
+        switch (SystemParameters.MAX_DS/100){
+            case 0: case 1:
+                diffAckLimit = 2000/this.hosts.size();
+                break;
+            case 2: case 3:
+                diffAckLimit = 1500/this.hosts.size();
+                break;
+            case 4: case 5: case 6:
+                diffAckLimit = 1000/this.hosts.size();
+                break;
+            case 7: case 8:
+                diffAckLimit = 500/this.hosts.size();
+                break;
+            default:
+                diffAckLimit = 2;
+                break;
 
-        System.out.println("Initial sleep time: " + sleepTime);
+        }
+
+        int gbCounter = 0;
 
         while(true){
             synchronized (this.stop){
@@ -141,8 +170,7 @@ public class PerfectLink extends Link{
                         }
                     }
 
-//                    System.out.println("Difference between send and ack for process " + portToHost.get(msgPkt.getPort()) + " is " + differenceSendAck[portToHost.get(msgPkt.getPort())].get());
-                    if(differenceSendAck[portToHost.get(msgPkt.getPort())].get() > 1028/this.hosts.size()){
+                    if(differenceSendAck[portToHost.get(msgPkt.getPort())].get() > diffAckLimit){
                         this.ackReset[i]++;
                         toSend[i].add(toSendPair);
 
@@ -165,9 +193,9 @@ public class PerfectLink extends Link{
                     ds.send(datagramPacket);
                     differenceSendAck[portToHost.get(msgPkt.getPort())].incrementAndGet();
                     toSend[i].add(toSendPair);
-                }
 
-                Thread.sleep(15);
+                }
+                Thread.sleep(sleepTime);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {

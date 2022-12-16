@@ -8,6 +8,7 @@ import cs451.message.Message;
 import cs451.message.NackMessage;
 import cs451.message.ProposalMessage;
 import cs451.packet.MessagePacket;
+import cs451.parser.ProposalParser;
 import cs451.server.ReceiverServer;
 import cs451.utils.SystemParameters;
 
@@ -64,14 +65,17 @@ public class Process {
 
     private byte hostID;
 
+    private ProposalParser proposalParser;
+
     public Process(List<Host> hosts, byte hostID, int numberOfProposal, int maxNumberInProposal,
-                   int maxDistinctNumbers, List<Set<Integer>> proposals){
+                   int maxDistinctNumbers, ProposalParser proposalParser){
 
         this.hosts = hosts;
         this.hostID = hostID;
 
         this.numberOfProposal = 0;
-        this.proposals = proposals;
+        this.proposalParser = proposalParser;
+        this.proposals = proposalParser.getProposals() ;
 
         this.proposalAcks = new HashMap<>();
         this.proposalNacks = new HashMap<>();
@@ -104,7 +108,8 @@ public class Process {
         List<Message> proposalMessageList = new ArrayList<>();
         for(int i=0; i<SystemParameters.MAX_MESSAGES_IN_PACKET; i++){
             if(this.proposals.size() == 0){
-                break;
+                this.proposals = proposalParser.getProposals();
+                if(this.proposals == null || this.proposals.size() == 0){ break;}
             }
 
             Set<Integer> toPropose = this.proposals.remove(0);
