@@ -97,6 +97,38 @@ public class BestEffortBroadcast extends Broadcast {
     }
 
     @Override
+    public void send(List<Message> messages, Host host) {
+
+        int pktIDCounter =0;
+
+        // TODO do not send to myself, just pretend that I delivered it
+        try {
+            int i=0;
+            pktIDCounter =0;
+            while(i<messages.size()){
+                MessagePacket pkt = new MessagePacket(this.hostID, this.pktID + pktIDCounter,
+                        InetAddress.getByName(host.getIp()), host.getPort());
+                while(i<messages.size() && pkt.addMessage(messages.get(i))){
+                    i++;
+                }
+                pktIDCounter++;
+                if(this.hostID == host.getId()){
+                    pkt.serializePacket();
+                    this.deliverMethod.apply(pkt);
+                }else{
+                    this.pl.sendPacket(pkt);
+                }
+            }
+
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+
+        this.pktID+=(pktIDCounter+1);
+
+    }
+
+    @Override
     public Void deliver(MessagePacket msg){
         this.deliverMethod.apply(msg);
         return null;

@@ -9,6 +9,9 @@ import cs451.message.NackMessage;
 import cs451.message.ProposalMessage;
 import cs451.packet.MessagePacket;
 import cs451.server.ReceiverServer;
+import cs451.utils.SystemParameters;
+
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -89,20 +92,18 @@ public class Process {
                 hosts.get(hostID-1).getPort(),
                 hosts);
 
-        new Thread(server).start();
-//        new Thread(this::removeHistory).start();
+        Thread t = new Thread(server);
+        t.start();
 
         sendProposal();
-        sendProposal();
+//        sendProposal();
     }
 
     private void sendProposal(){
 
-        // I have to send (8) proposal
         List<Message> proposalMessageList = new ArrayList<>();
-        for(int i=0; i<8; i++){
+        for(int i=0; i<SystemParameters.MAX_MESSAGES_IN_PACKET; i++){
             if(this.proposals.size() == 0){
-                System.out.println("The set of proposal is empty");
                 break;
             }
 
@@ -123,11 +124,6 @@ public class Process {
             ProposalMessage proposalMessage =
                     new ProposalMessage(activeProposal, 1, toPropose);
 
-            // also the ack should be inserted
-//            if(!this.acceptedValues.containsKey(activeProposal)){
-//                this.acceptedValues.put(activeProposal, new HashSet<>());
-//            }
-
             this.proposalAcks.put(activeProposal, 0);
             this.proposalNacks.put(activeProposal, 0);
             proposalMessageList.add(proposalMessage);
@@ -138,6 +134,7 @@ public class Process {
 
     private void ackEvent(int proposalNumber){
         // check if I received enough acks
+//        System.out.println("ACK EVENT FOR PROPOSAL " + proposalNumber + " WITH ACKS = " + this.proposalAcks.get(proposalNumber) );
         if(this.proposalAcks.get(proposalNumber) >= this.threshold){
 
             this.decided.put(proposalNumber, this.proposedValues.get(proposalNumber));
@@ -145,15 +142,15 @@ public class Process {
 
             this.activeProposalNumbers.remove(proposalNumber);
             activeSize = this.activeProposalNumbers.size();
-            System.out.println("Size of the set is: " + activeSize);
 
-            if(activeSize<8){
+            if(activeSize < SystemParameters.REFILL_THRESHOLD){
                 sendProposal();
             }
         }
     }
 
     private void nackEvent(int proposalNumber){
+//        System.out.println("NACK EVENT FOR PROPOSAL " + proposalNumber + " WITH ACKS = " + this.proposalNacks.get(proposalNumber) );
         if(this.proposalNacks.get(proposalNumber) +
                 this.proposalAcks.get(proposalNumber) >= this.threshold){
 
@@ -163,9 +160,6 @@ public class Process {
             this.proposalAcks.put(proposalNumber, 0);
             this.proposalNacks.put(proposalNumber, 0);
 
-//            this.acceptedValues.put(proposalNumber, new HashSet<>());
-//            this.acceptedValues.get(proposalNumber).addAll(this.proposedValues.get(proposalNumber));
-//            System.out.println("Nack event for proposal " + proposalNumber + " proposes: " + this.proposedValues.get(proposalNumber));
             ProposalMessage pm = new ProposalMessage(proposalNumber, activeProposal,
                     this.proposedValues.get(proposalNumber));
 
@@ -200,16 +194,7 @@ public class Process {
             return;
         }
 
-//        // TODO check that this actually adds all the values
-//        if(this.proposedValues.containsKey(msg.getProposalNumber())){
-//            this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
-//        }else{
-//            this.proposedValues.put(msg.getProposalNumber(), new HashSet<>());
-//            this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
-//        }
         this.proposedValues.get(msg.getProposalNumber()).addAll(msg.getAcceptedValues());
-
-//        System.out.println("Nack message for proposal " + msg.getProposalNumber() + " proposes: " + this.proposedValues.get(msg.getProposalNumber()));
         this.proposalNacks.put(msg.getProposalNumber(),
                 this.proposalNacks.getOrDefault(msg.getProposalNumber(), 0) + 1);
 
@@ -219,7 +204,7 @@ public class Process {
 
     }
 
-    private void handleProposal(ProposalMessage msg, byte senderID){
+    private Message handleProposal(ProposalMessage msg, byte senderID){
 
         if(!this.acceptedValues.containsKey(msg.getProposalNumber())){
             this.acceptedValues.put(msg.getProposalNumber(), ConcurrentHashMap.newKeySet());
@@ -227,21 +212,20 @@ public class Process {
 
         if(msg.getProposedValues().containsAll(this.acceptedValues.get(msg.getProposalNumber()))){
             this.acceptedValues.get(msg.getProposalNumber()).addAll(msg.getProposedValues());
-//            System.out.println("ACK Process " + senderID + " proposal "+ msg.getProposalNumber()+ " is: " + this.acceptedValues.get(msg.getProposalNumber()));
             // I have to send the ack message back
             AckMessage message = new AckMessage(msg.getProposalNumber(), msg.getActiveProposalNumber());
-            this.broadcast.send(message, this.hosts.get(senderID-1)); // TODO check if this works
+            return message;
+//            this.broadcast.send(message, this.hosts.get(senderID-1)); // TODO check if this works
         }else{
-//            msg.getProposedValues().addAll(this.acceptedValues.get(msg.getProposalNumber()));
-//            this.acceptedValues.put(msg.getProposalNumber(), msg.getProposedValues());
+
             this.acceptedValues.get(msg.getProposalNumber()).addAll(msg.getProposedValues());
-//            System.out.println("NACK Process " + senderID + " proposal "+ msg.getProposalNumber()+ " is: " + this.acceptedValues.get(msg.getProposalNumber()));
             Set<Integer> toNack = new HashSet<>();
             toNack.addAll(this.acceptedValues.get(msg.getProposalNumber()));
             NackMessage message = new NackMessage(msg.getProposalNumber(), msg.getActiveProposalNumber(),
                     toNack);
 
-            this.broadcast.send(message, this.hosts.get(senderID-1));
+            return message;
+//            this.broadcast.send(message, this.hosts.get(senderID-1));
         }
 
     }
@@ -254,9 +238,10 @@ public class Process {
     private Void deliver(MessagePacket msgPkt){
 
         List<Message> messageList = msgPkt.getMessages();
+        List<Message> toSend = new ArrayList<>();
         for(Message msg: messageList){
             if( msg instanceof ProposalMessage){
-                handleProposal((ProposalMessage) msg, msgPkt.getSenderID());
+                toSend.add(handleProposal((ProposalMessage) msg, msgPkt.getSenderID()));
             } else if (msg instanceof AckMessage) {
                 handleAcks((AckMessage) msg);
             } else if (msg instanceof  NackMessage) {
@@ -265,6 +250,8 @@ public class Process {
                 System.err.println("Message is an incorrect instance");
             }
         }
+
+        this.broadcast.send(toSend, this.hosts.get(msgPkt.getSenderID() - 1));
 
         return null;
     }

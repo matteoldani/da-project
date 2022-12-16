@@ -25,6 +25,7 @@ public abstract class Broadcast {
     public abstract void broadcast(List<Message> messages);
     public abstract void broadcast(Message message);
 
+    public abstract void send(List<Message> messages, Host host);
     public abstract void send(Message message, Host host);
     public abstract Void deliver(MessagePacket msg);
     public abstract void stopThread();

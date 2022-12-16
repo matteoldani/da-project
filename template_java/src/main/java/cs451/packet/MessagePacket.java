@@ -1,6 +1,7 @@
 package cs451.packet;
 
 import cs451.message.*;
+import cs451.utils.SystemParameters;
 import cs451.utils.Utils;
 import static cs451.packet.MessagePacketConstants.*;
 
@@ -85,7 +86,7 @@ public class MessagePacket extends Packet {
      */
     public boolean addMessage(Message msg){
 
-        if(this.msgs == 8){
+        if(this.msgs == SystemParameters.MAX_MESSAGES_IN_PACKET){
             return false;
         }
 

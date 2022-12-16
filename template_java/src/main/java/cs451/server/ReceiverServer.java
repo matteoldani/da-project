@@ -4,6 +4,7 @@ import cs451.Host;
 import cs451.link.Link;
 import cs451.packet.AckPacket;
 import cs451.packet.MessagePacket;
+import cs451.utils.SystemParameters;
 import cs451.utils.Utils;
 
 import java.io.IOException;
@@ -76,18 +77,16 @@ public class ReceiverServer implements Runnable{
                 ackPayload[0] = 1;
                 // specify the sender ID
                 ackPayload[1] = payload[1];
-                // specify the original sender ID
-                ackPayload[2] = payload[2];
                 // specify packet number
+                ackPayload[2] = payload[2];
                 ackPayload[3] = payload[3];
                 ackPayload[4] = payload[4];
                 ackPayload[5] = payload[5];
-                ackPayload[6] = payload[6];
                 // specify the port to which the message was sent
-                ackPayload[7]  = this.port[0];
-                ackPayload[8]  = this.port[1];
-                ackPayload[9]  = this.port[2];
-                ackPayload[10] = this.port[3];
+                ackPayload[6]  = this.port[0];
+                ackPayload[7]  = this.port[1];
+                ackPayload[8]  = this.port[2];
+                ackPayload[9] = this.port[3];
 
                 packet = new DatagramPacket(ackPayload, ackPayload.length,
                         packet.getAddress(), hosts.get(msg.getSenderID()-1).getPort());
@@ -111,7 +110,9 @@ public class ReceiverServer implements Runnable{
 
     @Override
     public void run() {
-        new Thread(this::handlePacket).start();
+
+        Thread t = new Thread(this::handlePacket);
+        t.start();
         while(true){
             synchronized (this.stop){
                 if(this.stop){
@@ -126,7 +127,12 @@ public class ReceiverServer implements Runnable{
                 throw new RuntimeException(e);
             }
 
-            toHandle.add(packet);
+            try {
+                toHandle.put(packet);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+//            System.out.println("To handle size: " + toHandle.size());
         }
     }
 

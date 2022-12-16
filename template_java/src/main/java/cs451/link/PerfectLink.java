@@ -4,12 +4,14 @@ import cs451.Host;
 import cs451.packet.AckPacket;
 import cs451.packet.MessagePacket;
 import cs451.utils.Pair;
+import cs451.utils.SystemParameters;
 import cs451.utils.Triplet;
 
 import java.io.IOException;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class PerfectLink extends Link{
@@ -20,9 +22,11 @@ public class PerfectLink extends Link{
     private DatagramSocket ds;
     private Boolean stop;
     private Function<MessagePacket, Void> deliverMethod;
-    private Function<Void, Boolean> askForPackets;
     private List<Host> hosts;
     private Map<Integer, Byte> portToHost;
+
+    private AtomicInteger[] differenceSendAck;
+    private int[] ackReset;
 
     private byte hostID;
 
@@ -31,8 +35,13 @@ public class PerfectLink extends Link{
         // Created the two queues used to handle sending of a message
 
         this.toSend = new LinkedBlockingQueue[128];
+        this.differenceSendAck = new AtomicInteger[128];
+        this.ackReset = new int[128];
+
         for(int i=0; i<128; i++){
             this.toSend[i] = new LinkedBlockingQueue<Map.Entry<MessagePacket, Integer>>();
+            differenceSendAck[i] = new AtomicInteger(0);
+            ackReset[i] = 0;
         }
 
         this.acked = new HashSet<>();
@@ -55,9 +64,8 @@ public class PerfectLink extends Link{
             this.portToHost.put(h.getPort(), (byte)h.getId());
         }
 
-        new Thread(this::send).start();
-
-
+        Thread t = new Thread(this::send);
+        t.start();
     }
 
     /**
@@ -82,6 +90,7 @@ public class PerfectLink extends Link{
      * @param ack is the packet containing the ack
      */
     public void receiveAck(AckPacket ack){
+        this.differenceSendAck[portToHost.get(ack.getPort())].decrementAndGet();
         synchronized (acked){
             acked.add(ack);
         }
@@ -103,6 +112,11 @@ public class PerfectLink extends Link{
      */
     private void send(){
 
+        int sleepTime = (int) (this.hosts.size() * (SystemParameters.MAX_DS * 0.01 + 1) * 0.1);
+        sleepTime = Math.max(10, sleepTime);
+
+        System.out.println("Initial sleep time: " + sleepTime);
+
         while(true){
             synchronized (this.stop){
                 if(this.stop){
@@ -113,17 +127,30 @@ public class PerfectLink extends Link{
             try {
                 for(int i=1; i<=hosts.size(); i++){
                     if(i==hostID){continue;}
-
+                    if(toSend[i].size() == 0){
+                        continue;
+                    }
                     Pair<MessagePacket, Integer> toSendPair = (Pair<MessagePacket, Integer>) toSend[i].take();
                     MessagePacket msgPkt = toSendPair.getKey();
 
                     synchronized (acked){
                         AckPacket ack = new AckPacket(msgPkt.getSenderID(), msgPkt.getPacketID(), msgPkt.getPort());
-
                         if(acked.contains(ack)){
                             acked.remove(ack);
                             continue;
                         }
+                    }
+
+//                    System.out.println("Difference between send and ack for process " + portToHost.get(msgPkt.getPort()) + " is " + differenceSendAck[portToHost.get(msgPkt.getPort())].get());
+                    if(differenceSendAck[portToHost.get(msgPkt.getPort())].get() > 1028/this.hosts.size()){
+                        this.ackReset[i]++;
+                        toSend[i].add(toSendPair);
+
+                        if(ackReset[i] == 30){
+                            differenceSendAck[portToHost.get(msgPkt.getPort())].set(0);
+                            ackReset[i] = 0;
+                        }
+                        continue;
                     }
 
                     Byte[] msgPayload = msgPkt.serializePacket();
@@ -136,8 +163,11 @@ public class PerfectLink extends Link{
                             new DatagramPacket(toSendPayload, msgPayload.length,
                                     msgPkt.getIpAddress(), msgPkt.getPort());
                     ds.send(datagramPacket);
+                    differenceSendAck[portToHost.get(msgPkt.getPort())].incrementAndGet();
                     toSend[i].add(toSendPair);
                 }
+
+                Thread.sleep(15);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {

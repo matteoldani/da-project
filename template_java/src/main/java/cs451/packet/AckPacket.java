@@ -6,13 +6,12 @@ import java.util.Objects;
 
 public class AckPacket extends Packet{
 
-    private int port;
     public AckPacket(byte[] payload){
         super();
         this.type = PacketType.ACK;
-        this.senderID = payload[1];
-        this.packetID = Utils.fromBytesToInt(payload, 3);
-        this.port = Utils.fromBytesToInt(payload, 7);
+        this.senderID = payload[MessagePacketConstants.SENDER_ID];
+        this.packetID = Utils.fromBytesToInt(payload, MessagePacketConstants.PACKET_ID);
+        this.port = Utils.fromBytesToInt(payload, MessagePacketConstants.PACKET_ID + 4);
 
     }
 
