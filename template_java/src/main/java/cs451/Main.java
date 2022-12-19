@@ -36,42 +36,6 @@ public class  Main {
         if(process == null){return;}
         process.stopThread();
 
-        //write/flush output file if necessary
-        System.out.println("Writing output.");
-        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outFile))) {
-
-            Map<Integer, Set<Integer>> processDecided = process.getDecided();
-
-            // DEBUG
-            System.out.println("Number of proposal decided = " + processDecided.size());
-            for(Integer i: processDecided.keySet()){
-                System.out.println("Decided proposal: " + i);
-            }
-
-            synchronized (processDecided) {
-                for(int i=0; i<processDecided.size(); i++){
-                    StringBuilder stringBuilder = new StringBuilder();
-                    if(!processDecided.containsKey(i)){
-                        System.out.println("Missing proposal " + i + " but the total size is: " + processDecided.size());
-                        break;
-                    }
-                    for(Integer n: processDecided.get(i)){
-                        stringBuilder.append(n);
-                        stringBuilder.append(' ');
-                    }
-                    stringBuilder.append('\n');
-                    bufferedWriter.write(stringBuilder.toString());
-                    bufferedWriter.flush();
-                }
-                bufferedWriter.flush();
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (OutOfMemoryError e){
-            return;
-        }
-        System.out.println("Output written.");
     }
 
     private static void initSignalHandlers() {
@@ -81,6 +45,47 @@ public class  Main {
                 handleSignal();
             }
         });
+    }
+
+    public static void outputWrite(){
+        //write/flush output file if necessary
+        System.out.println("Writing output.");
+        int proposalToWrite = 0;
+        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Path.of(outFile))) {
+
+            while(true){
+                Map<Integer, Set<Integer>> processDecided = process.getDecided();
+                boolean shouldContinue = false;
+                do{
+                    synchronized (processDecided){
+                        StringBuilder stringBuilder = new StringBuilder();
+                        if(processDecided.containsKey(proposalToWrite)){
+                            shouldContinue = true;
+                            for(Integer n: processDecided.get(proposalToWrite)){
+                                stringBuilder.append(n);
+                                stringBuilder.append(' ');
+                            }
+                            stringBuilder.append('\n');
+                            bufferedWriter.write(stringBuilder.toString());
+                            bufferedWriter.flush();
+
+                            processDecided.remove(proposalToWrite);
+                            proposalToWrite++;
+
+                        }
+                    }
+                }while (shouldContinue);
+                Thread.sleep(500);
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (OutOfMemoryError e){
+            return;
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -111,6 +116,9 @@ public class  Main {
         }
         process = new Process(parser.hosts(), (byte)parser.myId(), configParser.getNumberOfProposal(),
                 configParser.getMaxElementInProposal(), configParser.getMaxDistinctElement(), configParser);
+
+        Thread.sleep(3000);
+        new Thread(Main::outputWrite).start();
 
         while (true) {
             // Sleep for 1 hour
