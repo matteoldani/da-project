@@ -89,7 +89,7 @@ for i in range(number_proposal):
             continue
         for elem in proposes[i][j]:
             if elem not in decisions[i][j]:
-                print("Validation failed for proposal " + str(i) + " of process " + str(j) + " since proposed_i is not in decided_i: ", elem)
+                print("Validation failed for proposal " + str(i+1) + " of process " + str(j+1) + " since proposed_i is not in decided_i: ", elem)
                 print("Proposed_i: ", proposes[i][j])
                 print("Decided_i: ", decisions[i][j])
                 exit()
@@ -97,7 +97,7 @@ for i in range(number_proposal):
         # check that decision_i is subset of all_proposed
         for elem in decisions[i][j]:
             if elem not in all_proposed:
-                print("Validation failed for proposal " + str(i) + " of process " + str(j) + " since the decision is not in the set of all proposal: ", elem)
+                print("Validation failed for proposal " + str(i+1) + " of process " + str(j+1) + " since the decision is not in the set of all proposal: ", elem)
                 print("Size of all proposed: ", len(all_proposed))
                 print(all_proposed)
                 print("")
@@ -108,8 +108,8 @@ for i in range(len(decisions)):
     for j in range(len(decisions[i])):
         for k in range(j+1, len(decisions[i])):
             if not (set(decisions[i][j]).issubset(decisions[i][k]) or set(decisions[i][k]).issubset(decisions[i][j])):
-                print(f"Decision {i} of process {j} and process {k} are not consistent")
+                print(f"Decision {i+1} of process {j+1} and process {k+1} are not consistent")
                 exit()
-                
+
 print("Validation is successful!")
          

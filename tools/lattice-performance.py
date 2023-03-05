@@ -386,6 +386,9 @@ def main(parser_results, testConfig):
         print("Letting the program run for: ", parser_results.time)
         time.sleep(parser_results.time)
 
+        # for _, p in procs:
+        #     p.kill()
+
         unterminated = st.remainingUnterminatedProcesses()
         if unterminated is not None:
             st.terminateAllProcesses()

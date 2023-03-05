@@ -1,5 +1,7 @@
 # Distributed Algorithms 2022/23 - EPFL
 
+This repo holds my implementation of the project proposed in class CS-451 (Distributed Algorithms) at EPFL.
+The implementation of the first part of the project (FIFO Broadcast) is inside `fifo_broadcast`. The second one (Lattice Agreement), which is partially build on the previous one, is inside `lattice_agreement`.
 
 # Overview
 The goal of this practical project is to implement certain building blocks necessary for a decentralized system. To this end, some underlying abstractions will be used:
